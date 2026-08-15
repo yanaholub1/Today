@@ -1,0 +1,330 @@
+@import url('https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+/*
+  Design tokens sourced from Figma file wrEkyAK0ls2W719lDz5J2v, "Today" section
+  (node 109:2862). Confirmed live against node 109:4148 (hero screen) and
+  109:3408 (emotion-picker screen) via get_design_context.
+*/
+@theme {
+  --font-serif: "Young Serif", serif;
+  --font-sans: "Figtree", sans-serif;
+
+  --color-warm: #f83b7d;
+  --color-warm-border: #ed6393;
+  --color-warm-mid: #a7668b;
+  --color-warm-pale: #fcdaec;
+  --color-warm-pale-border: #fbdaec;
+  --color-warm-pale-alt: #f8edf3;
+  --color-warm-chip-border: #debed0;
+  --color-cool-pale: #d9e7fc;
+  --color-cool-pale-border: #e7eef8;
+  --color-offwhite: #fbf8fa;
+  --color-ink: #2f374a;
+  --color-divider: #fdebe2;
+
+  /*
+    Stage 2 additions — not in the static Figma source, derived to extend
+    the existing system rather than invented from scratch. See component
+    files for where each is used.
+  */
+  --color-cool-mid: #7286be; /* derived from the cool chip's own shadow tint rgba(114,134,190) — see ChoiceChip */
+  --color-neutral-border: #ddd4da; /* inactive filter segment border */
+  --color-filter-active-border: #e9cedd; /* active filter segment border */
+  --color-disabled-fill: #e3dde1; /* desaturated hero card fill */
+  --color-disabled-border: #cbc4c9; /* neutral gray border for disabled hero card */
+  --color-disabled-text: #8b8791;
+  --color-slider-from: #fbbee0;
+  --color-slider-to: #fbdbed;
+  --color-slider-border: #ffd6ed;
+  --color-focus-ring: #2f374a;
+  --color-focus-ring-field: #f83b7d;
+
+  /*
+    IntensitySlider inactive/active states (Stage 2.1/2.2 fixes) — verified
+    via get_design_context + get_screenshot on nodes 109:2863/109:2943
+    (track + labels) and 110:5212/110:5235 (knob). The base track gradient
+    is NOT one of the things that changes between states (confirmed by
+    sampling identical RGB at matching track coordinates in both
+    screenshots) — only the knob (a two-layer SVG composition, see
+    IntensitySlider.tsx — its gradient stops are hardcoded there rather
+    than tokenized here, since they're SVG gradient defs, not Tailwind
+    utility colors) and the current value's label change.
+  */
+  --color-slider-label-active: #eb0056;
+
+  /*
+    Review fix — IntensitySlider redesign, replacing the floating-knob
+    version above: verified via get_design_context on 10 nodes covering
+    every state of both the 3-segment (energy) and 5-segment (mood
+    intensity) variants (342:4559/4617/4579/4867/4813/4933, 340:4182/4226,
+    342:4665/4705). The knob is gone — the current value is now shown by a
+    progress-bar-style fill growing from the track's left edge (reusing
+    `--color-slider-to` as its own pale stop, plus this new saturated
+    stop) and by the tick at that position growing tall. `--color-slider-
+    label-default` replaces the label row's old `text-ink` — the inactive
+    label color (`#6e7381`) is a real, confirmed difference from ink
+    (`#2f374a`), not a rounding artifact, and doubles as the 5-segment
+    variant's new "Lowest"/"Highest" caption row color (always this shade,
+    never the active pink, regardless of which numeral is selected).
+  */
+  --color-slider-fill-from: #f63176;
+  --color-slider-label-default: #6e7381;
+
+  /*
+    Bottom tab bar (Fix 15) — verified via get_design_context on node
+    117:5847. The bar's own fill/border/inset-shadow are distinct from
+    every other surface in the app: a solid (not sheen) fill, a very
+    faint all-around border, and a single-layer top-inset highlight
+    rather than the shared 4-layer .sheen formula — see BottomNav.tsx for
+    where each is used.
+  */
+  --color-nav-bg: #fdedf6;
+  --color-nav-border: rgba(253, 216, 229, 0.3);
+  --color-nav-active: #f83f80;
+  --color-nav-inactive: #675f63;
+
+  /*
+    Home screen empty-state "Day Summary Card" (Fix 17) — verified via
+    get_design_context on node 117:5768/117:5877. None of the existing
+    warm-hue tokens are an exact match for this card's dashed border or
+    badge fill/border (closest, --color-warm-border #ed6393, is still a
+    genuinely different hex from this card's #f5a8c9) — see
+    DaySummaryCard.tsx for where each is used.
+  */
+  --color-summary-border: #f5a8c9;
+  --color-summary-badge-bg: #f63076;
+  --color-summary-badge-border: #f00a5b;
+  --color-summary-badge-text: #fef6fa;
+  --color-summary-subtitle: #8a8489;
+
+  /*
+    Home screen completed-state "Completion Summary Card" (Fix 20).
+    Structural colors only (border/dividers/mood-log text) — the energy
+    battery color is a component-local constant instead (see
+    lib/spheres.ts and CompletionSummaryCard.tsx), matching how
+    GradientCircleButton/BottomNav already keep their own one-off
+    icon/gradient colors inline rather than tokenized here.
+  */
+  --color-completion-border: #eddde6;
+  --color-completion-divider: #a1a4ac;
+  --color-completion-mood-text: #787d89;
+
+  /*
+    Calendar date badge (review fix, superseding Fix 20/22/23's old date
+    "pill" that peeked above the card) — 'today' verified via
+    get_design_context on node 294:2939; 'history'/past re-verified
+    against the dedicated standalone badge node 305:2035 (corrects 2
+    mismatches from an earlier reading of the card-embedded 302:1723).
+    Both variants share the SAME translucent-pink card border
+    (`--color-daycard-border`) — unlike the old pill design, today/history
+    no longer diverge at the outer-card level, only on the badge itself:
+    today's month strip is a saturated pink fill with white text and no
+    border of its own; past's is a light pink fill with gray text, plus a
+    `border-b` (bottom edge only) on the strip and a full border around
+    the whole badge (reusing `--color-completion-border`, a byte-exact
+    match to this badge's own `#eddde6` stroke). The day number is the
+    SAME dark `#212126` for both variants — only the header strip's own
+    fill/text/shadow differ; the weekday label is also shared by both.
+  */
+  --color-daycard-border: rgba(253, 207, 232, 0.5);
+  --color-calendar-today-header-bg: #f83f80;
+  --color-calendar-day-number: #212126;
+  --color-calendar-past-header-bg: #f8edf2;
+  --color-calendar-weekday: #6a697b;
+
+  /*
+    Intention-setting screen (Stage 4 correction) — verified via
+    get_design_context on 109:2863 (the real single-page "Set today's
+    intention" screen) and 134:3413 (the sphere pill's selected state).
+    None of the existing warm-hue tokens match this pill's colors — closest,
+    --color-warm-mid #a7668b, is a genuinely different hex from this
+    pill's selected fill #930845 — see SheenSurface.tsx's `sphere-pale`/
+    `sphere-selected` filter-scale presets and SpherePicker.tsx for where
+    these are used. Text-input border/save-button colors are one-off,
+    single-use values kept inline in TextInput.tsx/MorningIntentionFlow.tsx
+    rather than tokenized here, matching how GradientCircleButton's own
+    gradient stays a component-local constant.
+  */
+  --color-sphere-pale-bg: #fef6fa;
+  --color-sphere-pale-border: #fbdfef;
+  --color-sphere-selected-bg: #930845;
+  --color-sphere-selected-border: #cd92ac;
+
+  /*
+    Patterns "Intention"/"Mood" pill subtab switcher (Review fix, replacing
+    the old underline TabSwitcher grouping) — verified via get_design_context
+    on node 323:4609. The selected pill's border (`#e9cedd`) and shadow are
+    BYTE-IDENTICAL to the already-tokenized `--color-filter-active-border`
+    and the `.sheen-filter-active` utility respectively — reused as-is, not
+    redefined. Its text color (`#eb0056`) is likewise identical to the
+    already-tokenized `--color-slider-label-active` — reused, not
+    redefined. Only the container fill and the selected pill's own fill are
+    genuinely new values (close to but NOT the same as `--color-warm-pale-alt`
+    #f8edf3 — a real, confirmed difference, not a rounding artifact) — see
+    SheenSurface.tsx's `pill-switch-active` filter-scale preset for where
+    this is applied.
+  */
+  --color-pill-switch-bg: #f5f3f4;
+  --color-pill-switch-active-bg: #faebf3;
+
+  --radius-card: 12px;
+  --radius-hero: 24px;
+  --radius-pill: 400px;
+}
+
+body {
+  margin: 0;
+  background: white;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/*
+  Sheen shadow: the signature 4-layer inset "glassy" recipe used on every
+  filled surface in the design (hero cards, chips, pills, slider track).
+  The box-shadow formula is declared exactly ONCE on `.sheen`, reading its
+  five layer values from CSS custom properties. Each surface combines the
+  base class with one hue/geometry modifier that only sets those properties
+  (e.g. className="sheen sheen-warm") — no component hand-copies the shadow.
+*/
+@layer utilities {
+  .sheen {
+    box-shadow:
+      inset calc(-1 * var(--sheen-x)) 0 var(--sheen-blur-a) var(--sheen-edge),
+      inset var(--sheen-x) 0 var(--sheen-blur-b) var(--sheen-edge),
+      inset 0 var(--sheen-bottom-y) var(--sheen-bottom-blur) var(--sheen-bottom),
+      inset 0 var(--sheen-top-y) var(--sheen-top-blur) var(--sheen-top);
+  }
+
+  /* Hero-scale geometry (large stacked cards) */
+  .sheen-warm {
+    --sheen-x: 16px;
+    --sheen-blur-a: 40px;
+    --sheen-blur-b: 40.9px;
+    --sheen-edge: rgba(255, 255, 255, 0.32);
+    --sheen-bottom-y: -12px;
+    --sheen-bottom-blur: 16px;
+    --sheen-bottom: rgba(193, 64, 135, 0.3);
+    --sheen-top-y: 20px;
+    --sheen-top-blur: 40px;
+    --sheen-top: rgba(255, 255, 255, 0.24);
+  }
+
+  .sheen-pale {
+    --sheen-x: 12px;
+    --sheen-blur-a: 30px;
+    --sheen-blur-b: 30px;
+    --sheen-edge: rgba(255, 255, 255, 0.2);
+    --sheen-bottom-y: -6px;
+    --sheen-bottom-blur: 6px;
+    --sheen-bottom: rgba(195, 145, 173, 0.2);
+    --sheen-top-y: 32px;
+    --sheen-top-blur: 40px;
+    --sheen-top: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Chip-scale geometry (choice chips) */
+  .sheen-chip-warm {
+    --sheen-x: 8px;
+    --sheen-blur-a: 20px;
+    --sheen-blur-b: 20px;
+    --sheen-edge: rgba(255, 255, 255, 0.32);
+    --sheen-bottom-y: -1px;
+    --sheen-bottom-blur: 5px;
+    --sheen-bottom: rgba(73, 38, 57, 0.57);
+    --sheen-top-y: 16px;
+    --sheen-top-blur: 20px;
+    --sheen-top: rgba(255, 255, 255, 0.2);
+  }
+
+  .sheen-chip-cool {
+    --sheen-x: 8px;
+    --sheen-blur-a: 20px;
+    --sheen-blur-b: 20px;
+    --sheen-edge: rgba(255, 255, 255, 0.32);
+    --sheen-bottom-y: -3px;
+    --sheen-bottom-blur: 6px;
+    --sheen-bottom: rgba(114, 134, 190, 0.79);
+    --sheen-top-y: 16px;
+    --sheen-top-blur: 20px;
+    --sheen-top: rgba(255, 255, 255, 0.2);
+  }
+
+  /*
+    Flat 2-layer variants (no left/right edge glow) used by SegmentedFilterPill
+    and IntensitySlider. These reuse the exact same `.sheen` box-shadow
+    formula above — the edge layers are just zeroed out (transparent, 0px)
+    rather than a second shadow formula being written.
+  */
+  .sheen-filter-active {
+    --sheen-x: 0px;
+    --sheen-blur-a: 0px;
+    --sheen-blur-b: 0px;
+    --sheen-edge: transparent;
+    --sheen-bottom-y: -2px;
+    --sheen-bottom-blur: 3px;
+    --sheen-bottom: rgba(0, 0, 0, 0.05);
+    --sheen-top-y: 4px;
+    --sheen-top-blur: 4px;
+    --sheen-top: rgba(255, 255, 255, 0.35);
+  }
+
+  .sheen-track {
+    --sheen-x: 0px;
+    --sheen-blur-a: 0px;
+    --sheen-blur-b: 0px;
+    --sheen-edge: transparent;
+    --sheen-bottom-y: -4px;
+    --sheen-bottom-blur: 4px;
+    --sheen-bottom: rgba(224, 207, 216, 0.16);
+    --sheen-top-y: 6px;
+    --sheen-top-blur: 4px;
+    --sheen-top: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/*
+  Focus-visible ring. Uses the `outline` property (not box-shadow) on
+  purpose: every sheen surface already owns `box-shadow` for its inset
+  shadow, so a box-shadow-based ring would silently overwrite it instead
+  of layering with it. `outline` renders independently of box-shadow and
+  ignores the element's border-radius clipping, so it stays visible on any
+  surface. Not present in the static Figma source (states aren't captured
+  there) — added because every interactive component needs one.
+*/
+@layer utilities {
+  .focus-ring {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .focus-ring:focus-visible {
+    outline-color: var(--color-focus-ring);
+  }
+
+  /* Same mechanics as .focus-ring, scoped to actual text-entry fields (TextInput, NotesField's textarea) — explicit direct request for a distinct accent color there, not app-wide. */
+  .focus-ring-field {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .focus-ring-field:focus-visible {
+    outline-color: var(--color-focus-ring-field);
+  }
+
+  /*
+    Hides the native scrollbar on swipeable/touch-scroll rows (e.g. the
+    Patterns quick-filter tabs). These are meant to scroll by swipe, not
+    a visible desktop scrollbar — and on desktop Chrome, a reserved-space
+    scrollbar shrinks the element's own content box from the bottom,
+    throwing off `items-center` alignment against sibling elements (the
+    time-range picker button) that don't have one. Content stays
+    scrollable; only the browser's own scrollbar chrome is hidden.
+  */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
