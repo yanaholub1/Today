@@ -18,6 +18,8 @@ import { DayDetailScreen } from './screens/DayDetailScreen'
 import { DayLogStoreProvider, useDayLogStore } from './lib/dayLogStore'
 import { AuthProvider, useAuth } from './lib/authStore'
 import { useThemeColor } from './lib/useThemeColor'
+import { CHECKIN_FAB_SPLASH_GRADIENT, ONBOARDING_SPLASH_GRADIENT } from './lib/splashGradients'
+import { peekFirstLoadSplashAvailable } from './lib/firstLoadSplash'
 
 /**
  * Shown only for the brief window before Supabase's initial `getSession()`
@@ -54,14 +56,54 @@ function hasPersistedSupabaseSession(): boolean {
   }
 }
 
+/**
+ * The giant circle below is the same "fills the screen" opening beat
+ * `useSplashCollapse` (src/lib/useSplashCollapse.ts) plays for whichever
+ * real destination takes over once `status` resolves — `OnboardingScreen`
+ * for a signed-out guess, `BottomNav`'s check-in FAB for a signed-in one —
+ * so there's no gap where this screen's own background is visible without
+ * a circle already covering it before the real one exists to hand off to.
+ * Same gradient on both sides of that handoff (`splashGradients.ts`) is
+ * what makes the swap invisible; this copy is a static, unanimated `vmax`
+ * circle (no JS measurement needed — it never has to land anywhere, only
+ * sit there giant until the real one takes over).
+ *
+ * Signed-in branch is additionally gated on `peekFirstLoadSplashAvailable()`
+ * — unlike the signed-out branch (which is allowed to replay, matching
+ * `OnboardingScreen`'s own on-revisit behavior), the check-in FAB's own
+ * landing animation is a true first-load-only thing (`firstLoadSplash.ts`).
+ * `RequireRegistration` can render this screen again later in a session
+ * (its `dayLogLoading` branch), and by then the FAB's own splash has
+ * already played and has nothing left to hand off to — showing the circle
+ * again there would be a flash with no landing, not a real loading beat.
+ */
 function AuthLoadingScreen() {
   const [pink] = useState(() => !hasPersistedSupabaseSession())
+  const [showCircle] = useState(() => pink || peekFirstLoadSplashAvailable())
   useThemeColor(pink && '#ffdcf5')
   return (
-    <div
-      className="mx-auto h-screen w-full max-w-[393px]"
-      style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}
-    />
+    <div className="relative mx-auto h-screen w-full max-w-[393px]" style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}>
+      {showCircle && (
+        // `fixed`, not `absolute` — on a viewport wider than this app's own
+        // 393px column (e.g. desktop, testing in a browser window), an
+        // `absolute` circle here would be clipped to the COLUMN's own
+        // width by its `relative` parent, showing only a narrow vertical
+        // sliver of the circle's gradient instead of covering the whole
+        // screen. `fixed` positions against the viewport directly, same as
+        // `useSplashCollapse`'s own overlay (OnboardingScreen/BottomNav) —
+        // matching that, not a new pattern.
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed top-1/2 left-1/2 rounded-full"
+          style={{
+            width: '250vmax',
+            height: '250vmax',
+            transform: 'translate(-50%, -50%)',
+            backgroundImage: pink ? ONBOARDING_SPLASH_GRADIENT : CHECKIN_FAB_SPLASH_GRADIENT,
+          }}
+        />
+      )}
+    </div>
   )
 }
 

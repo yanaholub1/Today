@@ -1,15 +1,23 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { CalendarCheck, Lightbulb, Plus } from '@phosphor-icons/react'
 import { GradientCircleButton } from './GradientCircleButton'
 import { CheckInMenuSheet } from './CheckInMenuSheet'
 import { cn } from '../lib/cn'
+import { useSplashCollapse } from '../lib/useSplashCollapse'
+import { CHECKIN_FAB_SPLASH_GRADIENT } from '../lib/splashGradients'
+import { claimFirstLoadSplash, peekFirstLoadSplashAvailable } from '../lib/firstLoadSplash'
 
 // The center button's gradient is a DIFFERENT recipe from GradientCircleButton's
 // default (109:4143) — see that component's `gradient` prop doc for the exact
 // comparison. Border color, shadow, and Plus icon are identical to that
 // default; the white highlight shape is NOT (see TAB_BAR_FAB_GLOW below).
-const TAB_BAR_FAB_GRADIENT = 'linear-gradient(141.09deg, #F00A5B 5.3298%, #F63176 51.345%, #FD5F97 105.03%)'
+// Value lives in `splashGradients.ts`, shared with this same button's own
+// first-load splash circle below (so the overlay and the real button always
+// render identically) — re-exported under this file's own name since every
+// OTHER constant here is scoped to "this specific FAB," not the splash
+// concept generally.
+const TAB_BAR_FAB_GRADIENT = CHECKIN_FAB_SPLASH_GRADIENT
 
 // Circle diameter + white highlight shape, both updated at node
 // 128:647/128:649 ("Ellipse 17" + a 72px circle, superseding the previous
@@ -92,10 +100,45 @@ function ScrollFade() {
  * always-available entry point into either flow (the Check-in home
  * screen itself has no tappable entry point of its own since Fix 17
  * replaced its hero cards with the Today/CompletionSummaryCard system).
+ *
+ * First-load splash: on a signed-in user's very first app open this
+ * session (never on a later remount of this bar, e.g. leaving via a
+ * `FlowLayout` route and coming back — see `firstLoadSplash.ts`), the
+ * check-in button plays the SAME giant-circle-collapses-onto-a-target
+ * animation `OnboardingScreen`'s wordmark dot uses for signed-out
+ * visitors (`useSplashCollapse`, shared), landing on this button instead
+ * of the dot. Unlike the dot's own letters, this button's own "+" icon
+ * stays hidden (`GradientCircleButton`'s `iconVisible` prop) until the
+ * circle has fully landed, then fades in — the button should read as an
+ * empty gradient circle finding its resting place, not reveal its icon
+ * mid-flight.
  */
 export function BottomNav() {
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // See this component's own doc comment above. `shouldPlaySplash` is read
+  // once via a PURE peek — safe under StrictMode's double-render, since
+  // nothing is mutated by reading it — and never recomputed; the actual
+  // claim (marking this session's one splash as used, so a later remount
+  // never replays it) happens once from the layout effect below, not
+  // during render. See `firstLoadSplash.ts`'s own doc comment for why
+  // read and claim are deliberately two different functions.
+  const [shouldPlaySplash] = useState(() => peekFirstLoadSplashAvailable())
+  const [iconVisible, setIconVisible] = useState(!shouldPlaySplash)
+  const fabWrapperRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    claimFirstLoadSplash()
+  }, [])
+
+  const { circleRef, circleFillRef, showSplashCircle } = useSplashCollapse({
+    active: shouldPlaySplash,
+    targetRef: fabWrapperRef,
+    gradient: TAB_BAR_FAB_GRADIENT,
+    revealMs: 300, // matches GradientCircleButton's own icon-fade transition (`iconVisible` prop, `duration-300`)
+    onReveal: () => setIconVisible(true),
+  })
 
   const tabClass = (active: boolean) =>
     cn('focus-ring pressable flex flex-col items-center justify-center gap-[6px] rounded-[14px] px-[18px] py-1', active ? 'text-nav-active' : 'text-nav-inactive')
@@ -160,17 +203,25 @@ export function BottomNav() {
         mutually exclusive for a fixed bar height, and this is the more
         recent, more specific request.
       */}
-      <div className="absolute left-1/2 z-30 -translate-x-1/2" style={{ top: -TAB_BAR_FAB_GLOW.top }}>
+      <div ref={fabWrapperRef} className="absolute left-1/2 z-30 -translate-x-1/2" style={{ top: -TAB_BAR_FAB_GLOW.top }}>
         <GradientCircleButton
           icon={Plus}
           weight="bold"
           gradient={TAB_BAR_FAB_GRADIENT}
           glow={TAB_BAR_FAB_GLOW}
           size={TAB_BAR_FAB_SIZE}
+          iconVisible={iconVisible}
           aria-label="Check in"
           onClick={() => setMenuOpen(true)}
         />
       </div>
+
+      {/* First-load splash overlay — see this component's own doc comment above. Same two-div FLIP structure `useSplashCollapse` expects; `fixed` + high z-index so it renders above everything regardless of where in the tree it sits. */}
+      {showSplashCircle && (
+        <div ref={circleRef} aria-hidden="true" className="pointer-events-none fixed z-50">
+          <div ref={circleFillRef} className="absolute top-1/2 left-1/2 rounded-full" />
+        </div>
+      )}
 
       <CheckInMenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>

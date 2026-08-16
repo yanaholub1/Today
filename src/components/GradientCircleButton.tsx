@@ -48,6 +48,13 @@ export interface GradientCircleButtonProps {
   glow?: { width: number; height: number; path: string; top: number }
   /** Circle diameter in px. Defaults to node 109:4143's 88px — override for confirmed instances at a different size, e.g. the tab bar's center button is 72px (node 128:647). */
   size?: number
+  /**
+   * Defaults to `true`. Set `false` to fade the icon out (not unmount it —
+   * it stays in the DOM so its own opacity can transition) — e.g.
+   * BottomNav's check-in FAB hides its "+" until its first-load splash
+   * circle has fully landed on it, then flips this back to `true`.
+   */
+  iconVisible?: boolean
 }
 
 const DEFAULT_GRADIENT = 'linear-gradient(142.47deg, #F50056 15.164%, #F63176 47.707%, #FD4E8C 85.471%)'
@@ -109,7 +116,17 @@ const ICON_SIZE = 28 // unchanged across confirmed sizes — 109:4143 (88px circ
  * visually related but structurally different component — full-width
  * with text, not an icon-only circle — and isn't merged into this one).
  */
-export function GradientCircleButton({ icon: IconComponent, disabled, className, weight = 'fill', gradient = DEFAULT_GRADIENT, glow = DEFAULT_GLOW, size = DEFAULT_SIZE, ...rest }: GradientCircleButtonProps) {
+export function GradientCircleButton({
+  icon: IconComponent,
+  disabled,
+  className,
+  weight = 'fill',
+  gradient = DEFAULT_GRADIENT,
+  glow = DEFAULT_GLOW,
+  size = DEFAULT_SIZE,
+  iconVisible = true,
+  ...rest
+}: GradientCircleButtonProps) {
   return (
     <span className={cn('relative inline-block shrink-0', className)} style={{ width: size, height: size }}>
       {/*
@@ -145,7 +162,9 @@ export function GradientCircleButton({ icon: IconComponent, disabled, className,
         }}
         {...rest}
       >
-        <IconComponent size={ICON_SIZE} weight={weight} color="white" />
+        <span className={cn('transition-opacity duration-300', iconVisible ? 'opacity-100' : 'opacity-0')}>
+          <IconComponent size={ICON_SIZE} weight={weight} color="white" />
+        </span>
       </button>
     </span>
   )
