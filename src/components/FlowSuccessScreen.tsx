@@ -9,6 +9,8 @@ export interface FlowSuccessScreenProps {
   subtitle: string
   onClose: () => void
   onDone: () => void
+  /** Overrides the button's default "Done" label — e.g. the magic-link "check your email" step reuses this same template but needs "Use a different email" instead. Defaults to "Done" so every existing call site is unaffected. */
+  doneLabel?: string
 }
 
 /**
@@ -26,7 +28,7 @@ export interface FlowSuccessScreenProps {
  * 253:2147, applying to every success screen at once since this is their
  * one shared component.
  */
-export function FlowSuccessScreen({ icon, title, subtitle, onClose, onDone }: FlowSuccessScreenProps) {
+export function FlowSuccessScreen({ icon, title, subtitle, onClose, onDone, doneLabel = 'Done' }: FlowSuccessScreenProps) {
   return (
     <>
       <div className="flex w-full items-center justify-end px-5 pt-[max(16px,env(safe-area-inset-top))] pb-2">
@@ -41,7 +43,7 @@ export function FlowSuccessScreen({ icon, title, subtitle, onClose, onDone }: Fl
       </div>
       <div className="px-5 pt-4 pb-5">
         <GradientActionButton variant="secondary" onClick={onDone}>
-          Done
+          {doneLabel}
         </GradientActionButton>
       </div>
     </>

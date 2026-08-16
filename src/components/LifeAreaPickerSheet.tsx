@@ -61,7 +61,7 @@ export function LifeAreaPickerSheet({ open, value, onSelect, onDismiss }: LifeAr
             hue={selected ? 'sphere-fixed' : 'sphere-pale'}
             scale="filter"
             aria-pressed={selected}
-            className="focus-ring flex h-[48px] w-full items-center justify-center gap-2 rounded-pill pr-3.5 pl-3"
+            className="focus-ring pressable flex h-[48px] w-full items-center justify-center gap-2 rounded-pill pr-3.5 pl-3"
             onClick={() => onSelect(sphere.id)}
           >
             <Icon size={20} weight="fill" />

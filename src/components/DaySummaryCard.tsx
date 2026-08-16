@@ -52,7 +52,7 @@ export function DaySummaryCard({
     <button
       type="button"
       onClick={onClick}
-      className={cn('focus-ring flex w-full flex-col items-center justify-center gap-4 rounded-hero border-[1.5px] border-dashed border-summary-border px-5 py-8', className)}
+      className={cn('focus-ring pressable flex w-full flex-col items-center justify-center gap-4 rounded-hero border-[1.5px] border-dashed border-summary-border px-5 py-8', className)}
     >
       <IconComponent size={52} weight="fill" className="text-summary-badge-bg" />
       <div className="flex flex-col items-center gap-2">

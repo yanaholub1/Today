@@ -37,7 +37,7 @@ export function IconTapTarget({ icon: IconComponent, tone = 'ink', weight = 'reg
       type="button"
       disabled={disabled}
       className={cn(
-        'focus-ring flex size-10 items-center justify-center rounded-full disabled:opacity-40',
+        'focus-ring pressable flex size-10 items-center justify-center rounded-full disabled:opacity-40',
         tone === 'white' ? 'text-white' : 'text-ink',
         className,
       )}

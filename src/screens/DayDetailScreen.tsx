@@ -174,7 +174,7 @@ function MoodCheckInDetailCard({ checkIn, isLast }: { checkIn: MoodCheckInRecord
           type="button"
           aria-expanded={instructionsOpen}
           onClick={() => setInstructionsOpen((v) => !v)}
-          className="focus-ring sheen sheen-filter-active relative flex w-full flex-col gap-3 rounded-[16px] border border-solid border-[#eddde6] bg-[#fdfcfd] p-4 text-left"
+          className="focus-ring pressable sheen sheen-filter-active relative flex w-full flex-col gap-3 rounded-[16px] border border-solid border-[#eddde6] bg-[#fdfcfd] p-4 text-left"
         >
           <div className="flex w-full items-center justify-between gap-2 pr-8">
             <p className="font-sans text-[15px] font-medium whitespace-nowrap text-[#787d89]">

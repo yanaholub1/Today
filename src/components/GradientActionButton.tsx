@@ -33,7 +33,7 @@ export function GradientActionButton({ icon, children, className, variant = 'pri
     <button
       type="button"
       className={cn(
-        'focus-ring flex w-full items-center justify-center gap-2 border border-solid px-4 py-3.5 disabled:opacity-40',
+        'focus-ring pressable flex w-full items-center justify-center gap-2 border border-solid px-4 py-3.5 disabled:opacity-40',
         radius === 'lg' ? 'rounded-[16px]' : 'rounded-[12px]',
         isPrimary ? 'border-[#f56093]' : 'border-[#fcbbd2]',
         className,

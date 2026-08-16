@@ -50,7 +50,7 @@ export function SpherePicker({ value, onChange, className }: SpherePickerProps) 
             hue={selected ? 'sphere-selected' : 'sphere-pale'}
             scale="filter"
             aria-pressed={selected}
-            className="focus-ring flex shrink-0 items-center gap-2 rounded-pill pt-[11px] pb-[11px] pr-3.5 pl-3"
+            className="focus-ring pressable flex shrink-0 items-center gap-2 rounded-pill pt-[11px] pb-[11px] pr-3.5 pl-3"
             onClick={() => onChange(sphere.id)}
           >
             <Icon size={20} weight="fill" />

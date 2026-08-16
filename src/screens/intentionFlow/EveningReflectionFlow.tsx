@@ -177,7 +177,7 @@ export function EveningReflectionFlow() {
             type="button"
             aria-pressed={draft.glad === true}
             onClick={() => updateDraft({ glad: true, tagId: null })}
-            className="focus-ring flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
+            className="focus-ring pressable flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
             style={{ ...(draft.glad === true ? THUMB_SELECTED : THUMB_UNSELECTED), boxShadow: THUMB_SHADOW }}
           >
             <Circle size={20} weight="fill" style={{ color: draft.glad === true ? '#6d0e2d' : '#353d4f' }} />
@@ -189,7 +189,7 @@ export function EveningReflectionFlow() {
             type="button"
             aria-pressed={draft.glad === false}
             onClick={() => updateDraft({ glad: false, tagId: null })}
-            className="focus-ring flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
+            className="focus-ring pressable flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
             style={{ ...(draft.glad === false ? THUMB_SELECTED : THUMB_UNSELECTED), boxShadow: THUMB_SHADOW }}
           >
             <CircleHalf size={20} weight="fill" style={{ color: draft.glad === false ? '#6d0e2d' : '#353d4f' }} />
@@ -205,7 +205,7 @@ export function EveningReflectionFlow() {
             <button
               type="button"
               onClick={() => setReasonSheetOpen(true)}
-              className="focus-ring flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c] pr-4 pl-1"
+              className="focus-ring pressable flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c] pr-4 pl-1"
             >
               {selectedTag ? (
                 <span

@@ -41,7 +41,7 @@ export function ChoiceChip({ label, family, selected = false, icon, className, .
       scale="chip"
       aria-pressed={selected}
       className={cn(
-        'focus-ring w-full rounded-card py-3',
+        'focus-ring pressable w-full rounded-card py-3',
         icon ? 'grid grid-cols-[45px_1fr] items-center pr-4' : 'flex items-center justify-center px-4',
         className,
       )}

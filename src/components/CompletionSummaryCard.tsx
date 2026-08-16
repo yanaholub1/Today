@@ -237,7 +237,7 @@ export function CompletionSummaryCard({ date, intention, moodCheckIns, context =
     <Root
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={cn('flex w-full items-center gap-4 rounded-[16px] border border-solid bg-white p-3', onClick && 'focus-ring text-left')}
+      className={cn('flex w-full items-center gap-4 rounded-[16px] border border-solid bg-white p-3', onClick && 'focus-ring pressable text-left')}
       style={{ borderColor: 'var(--color-daycard-border)' }}
     >
       <DateBadge date={date} variant={context} />

@@ -46,7 +46,7 @@ export function PillSubtabSwitcher<T extends string>({ items, activeId, onChange
               scale="filter"
               aria-pressed
               onClick={() => onChange(id)}
-              className="focus-ring z-[2] flex min-w-[100px] items-center justify-center rounded-pill px-4 py-3"
+              className="focus-ring pressable z-[2] flex min-w-[100px] items-center justify-center rounded-pill px-4 py-3"
             >
               <span className="font-sans text-base font-semibold whitespace-nowrap">{label}</span>
             </SheenSurface>
@@ -58,7 +58,7 @@ export function PillSubtabSwitcher<T extends string>({ items, activeId, onChange
             type="button"
             aria-pressed={false}
             onClick={() => onChange(id)}
-            className="focus-ring z-[1] flex min-w-[100px] items-center justify-center rounded-pill px-4 py-3"
+            className="focus-ring pressable z-[1] flex min-w-[100px] items-center justify-center rounded-pill px-4 py-3"
           >
             <span className="font-sans text-base font-medium whitespace-nowrap text-ink/76">{label}</span>
           </button>

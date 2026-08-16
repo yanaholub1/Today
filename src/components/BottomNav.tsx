@@ -98,7 +98,7 @@ export function BottomNav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const tabClass = (active: boolean) =>
-    cn('focus-ring flex flex-col items-center justify-center gap-[6px] rounded-[14px] px-[18px] py-1', active ? 'text-nav-active' : 'text-nav-inactive')
+    cn('focus-ring pressable flex flex-col items-center justify-center gap-[6px] rounded-[14px] px-[18px] py-1', active ? 'text-nav-active' : 'text-nav-inactive')
 
   // Journal reads as active on /checkin too, not just /entries — /checkin
   // (the Check-in home screen) IS the app's actual homepage, so it's

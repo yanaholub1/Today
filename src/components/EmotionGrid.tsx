@@ -72,7 +72,7 @@ export function EmotionGrid({ items, value, onChange, className }: EmotionGridPr
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(item)}
-            className={cn('focus-ring flex h-12 items-center justify-center rounded-pill border border-solid px-4 text-center font-sans text-base font-medium', !selected && 'text-ink')}
+            className={cn('focus-ring pressable flex h-12 items-center justify-center rounded-pill border border-solid px-4 text-center font-sans text-base font-medium', !selected && 'text-ink')}
             style={
               selected
                 ? { backgroundColor: quadrantDef.fill, borderColor: quadrantDef.border, boxShadow: quadrantDef.boxShadow, color: quadrantDef.textColor }

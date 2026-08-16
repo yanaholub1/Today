@@ -52,7 +52,7 @@ export function FeelBetterSheet({ open, onAnswer, onDismiss }: FeelBetterSheetPr
             <button
               type="button"
               onClick={() => onAnswer(true)}
-              className="focus-ring flex h-12 flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
+              className="focus-ring pressable flex h-12 flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
               style={PILL_STYLE}
             >
               <ThumbsUp size={20} weight="fill" className="text-ink" />
@@ -61,7 +61,7 @@ export function FeelBetterSheet({ open, onAnswer, onDismiss }: FeelBetterSheetPr
             <button
               type="button"
               onClick={() => onAnswer(false)}
-              className="focus-ring flex h-12 flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
+              className="focus-ring pressable flex h-12 flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
               style={PILL_STYLE}
             >
               <ThumbsUp size={20} weight="fill" className="-scale-y-100 text-ink" />

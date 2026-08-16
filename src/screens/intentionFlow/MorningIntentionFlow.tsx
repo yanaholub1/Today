@@ -216,7 +216,7 @@ export function MorningIntentionFlow() {
                 type="button"
                 onClick={() => setAreaSheetOpen(true)}
                 className={cn(
-                  'focus-ring flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c]',
+                  'focus-ring pressable flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c]',
                   selectedSphere ? 'pr-4 pl-1' : 'px-4',
                 )}
               >
@@ -247,7 +247,7 @@ export function MorningIntentionFlow() {
               disabled={!canAddMore}
               onClick={handleAddIntention}
               className={cn(
-                'focus-ring flex h-12 w-full items-center justify-center gap-2 rounded-[8px] border border-solid px-4 py-2 opacity-70',
+                'focus-ring pressable flex h-12 w-full items-center justify-center gap-2 rounded-[8px] border border-solid px-4 py-2 opacity-70',
                 canAddMore ? 'border-[#c15178] bg-[#fefafc] text-[#a7073e]' : 'border-[#cdbfc4] text-[#17171c]',
               )}
             >
@@ -274,7 +274,7 @@ export function MorningIntentionFlow() {
                         type="button"
                         aria-label={`Remove "${intention.text}"`}
                         onClick={() => handleRemoveIntention(index)}
-                        className="focus-ring absolute top-0 right-0 flex size-11 items-center justify-center rounded-2xl bg-white"
+                        className="focus-ring pressable absolute top-0 right-0 flex size-11 items-center justify-center rounded-2xl bg-white"
                       >
                         <Trash size={20} />
                       </button>

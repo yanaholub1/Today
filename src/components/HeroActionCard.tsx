@@ -39,8 +39,11 @@ const RADIUS: Record<HeroActionCardStackPosition, string> = {
   last: 'rounded-t-hero',
 }
 
-const BASE_CLASSES =
-  'focus-ring flex w-full items-center justify-center px-6 py-8 text-center transition-transform duration-150 active:scale-[0.98] active:opacity-90 disabled:pointer-events-none'
+// Pressed feedback is the shared `.pressable` utility (index.css) now, not
+// this component's own bespoke `active:scale-[0.98] active:opacity-90` —
+// motion pass, replacing the one-off Stage-2-era version with the same
+// press pattern every other button in the app uses.
+const BASE_CLASSES = 'focus-ring pressable flex w-full items-center justify-center px-6 py-8 text-center disabled:pointer-events-none'
 
 // 'full' cards get a 160px floor (their real min-height source is
 // whatever screen renders them full-height anyway, so this is just a

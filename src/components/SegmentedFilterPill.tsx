@@ -101,7 +101,7 @@ export function SegmentedFilterPill({ items, activeId, onActiveChange, onSeeAll,
                 aria-label={item.label}
                 aria-pressed
                 onClick={() => onActiveChange?.(item.id)}
-                className="focus-ring z-10 flex h-[54px] min-w-0 basis-1/4 grow-0 shrink-0 items-center justify-center rounded-pill"
+                className="focus-ring pressable z-10 flex h-[54px] min-w-0 basis-1/4 grow-0 shrink-0 items-center justify-center rounded-pill"
                 style={{
                   backgroundColor: style.fill,
                   // Figma's stroke on this shape is "outside" alignment —
@@ -134,7 +134,7 @@ export function SegmentedFilterPill({ items, activeId, onActiveChange, onSeeAll,
               aria-label={item.label}
               aria-pressed={false}
               onClick={() => onActiveChange?.(item.id)}
-              className="focus-ring flex min-w-0 basis-1/4 grow-0 shrink-0 items-center justify-center px-6 py-3 text-[#787d89]"
+              className="focus-ring pressable flex min-w-0 basis-1/4 grow-0 shrink-0 items-center justify-center px-6 py-3 text-[#787d89]"
             >
               <Icon size={28} weight="fill" />
             </button>
@@ -147,7 +147,7 @@ export function SegmentedFilterPill({ items, activeId, onActiveChange, onSeeAll,
           type="button"
           onClick={onSeeAll}
           aria-pressed={seeAllActive}
-          className={cn('focus-ring ml-3 shrink-0 whitespace-nowrap font-sans text-base font-medium', seeAllActive ? 'text-warm' : 'text-ink')}
+          className={cn('focus-ring pressable ml-3 shrink-0 whitespace-nowrap font-sans text-base font-medium', seeAllActive ? 'text-warm' : 'text-ink')}
         >
           See all
         </button>

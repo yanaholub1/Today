@@ -244,7 +244,7 @@ export function MoodFlowScreen() {
                       key={result.emotion}
                       type="button"
                       onClick={() => handleEmotionSearchPick(result)}
-                      className="focus-ring rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left font-sans text-base font-medium text-ink"
+                      className="focus-ring pressable rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left font-sans text-base font-medium text-ink"
                     >
                       {result.emotion}
                     </button>
@@ -308,7 +308,7 @@ export function MoodFlowScreen() {
                       key={result.emotion}
                       type="button"
                       onClick={() => handleSearchPick(result)}
-                      className="focus-ring rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left font-sans text-base font-medium text-ink"
+                      className="focus-ring pressable rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left font-sans text-base font-medium text-ink"
                     >
                       {result.emotion}
                     </button>

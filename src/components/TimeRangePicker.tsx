@@ -38,7 +38,7 @@ export function TimeRangePicker({ value, onChange, className }: TimeRangePickerP
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="focus-ring flex items-center justify-center gap-1 rounded-pill px-2 pt-4 pb-2"
+        className="focus-ring pressable flex items-center justify-center gap-1 rounded-pill px-2 pt-4 pb-2"
       >
         <CalendarDots size={20} className="text-ink" />
         <span className="font-sans text-base font-medium tracking-[-0.16px] whitespace-nowrap text-ink">{activeLabel}</span>

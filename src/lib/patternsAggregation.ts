@@ -5,9 +5,9 @@ import type { MoodQuadrantId } from './moodCategories'
 import { REFLECTION_TAGS } from './reflectionTags'
 import { TECHNIQUES } from './moodTechniques'
 import { subDays } from './journalHistory'
-import type { PatternsMockDay } from './patternsHistoryMock'
+import type { PatternsMockDay } from './dayLogHistory'
 
-/** Pure aggregation/filtering over the combined (today's real store data + seeded mock history) record arrays — no rendering, no component state. Kept separate from PatternsScreen.tsx so that screen stays focused on layout. */
+/** Pure aggregation/filtering over the combined (today's live data + past-day history, both real Supabase rows as of Stage 6) record arrays — no rendering, no component state. Kept separate from PatternsScreen.tsx so that screen stays focused on layout. */
 
 // ---------------------------------------------------------------------------
 // Shared time range (Fix 25) — the one control that filters every section.
@@ -49,8 +49,9 @@ export interface PatternsDataset {
 }
 
 /**
- * Filters the seeded mock history (`PATTERNS_MOCK_DAYS`) by the selected
- * time range and merges in today's real data from the live store. Filters
+ * Filters the fetched day-log history (`mockDays` — real rows as of Stage
+ * 6, see `dayLogHistory.ts`) by the selected time range and merges in
+ * today's real data from the live store. Filters
  * at the DAY level first (each mock day already bundles its own
  * `dayLog`/`intentions`/`moodCheckIns` together), then flattens — rather
  * than filtering the 3 arrays independently, which would need a separate
@@ -148,9 +149,12 @@ export interface WeekOption {
  * tabs, not a single static label like the earlier pass assumed. Returns
  * `count` non-overlapping, most-recent-first 7-day windows ending on
  * `now`'s own day. Unlike `buildAvailableMonths`, this doesn't filter down
- * to windows that actually have data — `PATTERNS_MOCK_DAYS` is dense
- * (a record every day across its whole span), so every recent week has
- * something in it; not worth the extra pass.
+ * to windows that actually have data — the old seeded mock history was
+ * dense enough that every recent week had something in it, so this never
+ * needed the extra pass; a real (sparser) user's history can now surface
+ * a week tab with nothing in it, same as any other range/filter combo
+ * with too little data (each section's own `EmptyState`/`MIN_SAMPLE_SIZE`
+ * handling already covers that, unchanged).
  */
 export function buildAvailableWeeks(now: Date = new Date(), count = 6): WeekOption[] {
   const todayStart = startOfDay(now)
@@ -230,8 +234,8 @@ export function buildMoodTimeline(moodCheckIns: MoodCheckInRecord[], range: Patt
   else if (range === 'month') totalDays = 31
   else {
     // 'all' — span from the oldest check-in actually present to today, so
-    // the timeline's own length tracks however much mock history exists
-    // rather than a constant duplicated from patternsHistoryMock.ts.
+    // the timeline's own length tracks however much history actually
+    // exists rather than a hardcoded constant.
     const oldestMs = moodCheckIns.length > 0 ? Math.min(...moodCheckIns.map((e) => startOfDay(new Date(e.createdAt)).getTime())) : todayStart.getTime()
     totalDays = Math.max(1, Math.round((todayStart.getTime() - oldestMs) / 86400000) + 1)
   }

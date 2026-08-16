@@ -37,7 +37,7 @@ export function PracticeCard({ technique, onUnfavorite }: PracticeCardProps) {
         type="button"
         onClick={onUnfavorite}
         aria-label={`Remove ${technique.label} from Practices`}
-        className="focus-ring absolute top-4 right-4 flex size-6 items-center justify-center"
+        className="focus-ring pressable absolute top-4 right-4 flex size-6 items-center justify-center"
       >
         <Heart size={24} weight="fill" className="text-warm" />
       </button>

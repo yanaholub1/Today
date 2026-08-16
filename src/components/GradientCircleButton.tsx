@@ -137,7 +137,7 @@ export function GradientCircleButton({ icon: IconComponent, disabled, className,
       <button
         type="button"
         disabled={disabled}
-        className="focus-ring relative z-10 flex size-full items-center justify-center rounded-pill border border-solid disabled:opacity-40"
+        className="focus-ring pressable relative z-10 flex size-full items-center justify-center rounded-pill border border-solid disabled:opacity-40"
         style={{
           borderColor: '#F56093',
           backgroundImage: gradient,

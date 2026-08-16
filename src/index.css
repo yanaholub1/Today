@@ -312,6 +312,124 @@ body {
   }
 
   /*
+    Shared pressed-state feedback (motion pass) — one utility for every
+    discrete tap target app-wide (HeroActionCard, ChoiceChip,
+    IconTapTarget, the floating tab-bar button, SegmentedFilterPill
+    segments, GradientActionButton/GradientCircleButton, picker-sheet
+    option rows, etc.), so the whole app shares one press "feel" instead
+    of each component inventing its own. Uses `:active` (fires on both
+    touch and mouse, no JS/state needed) rather than a pointerdown/up
+    listener pair — simpler, and correct by construction (can't get stuck
+    "pressed" if a pointerup fires outside the element). NOT applied to
+    continuously-dragged surfaces (`IntensitySlider`'s own track) — those
+    aren't a "press", and scaling the whole track down mid-drag would
+    fight the drag gesture instead of confirming a tap.
+
+    `scale(0.96)` + a slight opacity dip, snappy (100ms) so it reads as
+    immediate tactile feedback rather than a lagging animation — matches
+    the "brief scale-down/opacity dip while held, back to normal on
+    release" spec. `transform`+`opacity` only (both compositor-only
+    properties, no layout/paint cost) for a genuinely lightweight effect.
+
+    iOS Safari note: `:active` doesn't fire reliably on iOS unless SOME
+    touch listener exists on the page (a long-documented WebKit quirk) —
+    main.tsx registers a no-op `touchstart` listener once at the app root
+    for exactly this reason, so this utility actually works on-device,
+    not just in desktop testing.
+  */
+  .pressable {
+    transition:
+      transform 100ms ease-out,
+      opacity 100ms ease-out;
+  }
+  .pressable:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pressable {
+      transition: opacity 100ms ease-out;
+    }
+    .pressable:active {
+      transform: none;
+    }
+  }
+
+  /*
+    Favorite-heart micro-animation (motion pass) — a transient confirmation
+    burst layered on top of the real heart icon when a technique is
+    favorited (TechniqueCard.tsx), NOT a replacement for it: the real heart
+    icon switches to its filled/favorited look immediately and stays there;
+    this is a second, purely decorative heart absolutely positioned over
+    it, which pops slightly larger than resting size and fades away. Pure
+    CSS `@keyframes` (no JS animation loop) — the component only toggles
+    whether this element is mounted at all, for the ~450ms the burst plays.
+  */
+  @keyframes heart-burst-pop {
+    from {
+      transform: scale(1);
+      opacity: 0.9;
+    }
+    to {
+      transform: scale(1.7);
+      opacity: 0;
+    }
+  }
+  .heart-burst {
+    animation: heart-burst-pop 450ms ease-out forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .heart-burst {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /*
+    Onboarding splash — the circle's single ball-drop bounce against the
+    wordmark row (OnboardingScreen.tsx), between the collapse settling and
+    the letters appearing. Review fix: originally built as two separately
+    JS-reassigned `transition`s chained mid-flight (drop, then spring back)
+    — a known-fragile pattern, since handing a transform off from one
+    `transition` to a newly-assigned one mid-flight leaves room for a
+    transient rendering artifact. A single `@keyframes` animation is
+    computed once by the browser with no JS intervention once started, and
+    — critically — only ever varies `translateY` here, never `scale` or
+    width/height, so the circle's shape (the whole point of an earlier fix)
+    cannot distort by construction, regardless of timing.
+
+    Per-keyframe `animation-timing-function` (not one curve for the whole
+    animation): `ease-in` for the drop (0% → the peak keyframe, accelerating
+    like a falling object) and a "back-out" cubic-bezier for the rise (peak
+    → 100%), whose built-in overshoot past the 0 baseline IS the rebound —
+    no separate third stage needed for a single, convincing bounce.
+
+    The peak keyframe sits at 36% through the animation — matches this
+    effect's own JS constants (`SPLASH_BOUNCE_DOWN_MS` /
+    `SPLASH_BOUNCE_DOWN_MS + SPLASH_BOUNCE_UP_MS`); keep both in sync if
+    either changes. `--splash-bounce-drop` is set from JS
+    (`SPLASH_BOUNCE_DROP_PX`) so the drop distance stays tunable from one
+    place without duplicating the value into this file.
+  */
+  @keyframes splash-circle-bounce {
+    0% {
+      transform: translateY(0);
+      animation-timing-function: ease-in;
+    }
+    36% {
+      transform: translateY(var(--splash-bounce-drop, 12px));
+      animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  .splash-circle-bounce {
+    animation-name: splash-circle-bounce;
+    animation-fill-mode: both;
+  }
+
+  /*
     Hides the native scrollbar on swipeable/touch-scroll rows (e.g. the
     Patterns quick-filter tabs). These are meant to scroll by swipe, not
     a visible desktop scrollbar — and on desktop Chrome, a reserved-space

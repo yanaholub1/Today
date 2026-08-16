@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Heart } from '@phosphor-icons/react'
 
 export interface TechniqueCardProps {
@@ -32,15 +33,35 @@ export interface TechniqueCardProps {
  * Filled ink-pink when hearted, outline gray otherwise; neither state is
  * specified by any node (both fetched examples show only the plain
  * outline), so this fill treatment is inferred, not verified.
+ *
+ * Motion pass: favoriting (a genuine `false → true` transition of
+ * `hearted`, tracked via `wasHearted` so this never fires on mount or on
+ * unfavoriting) plays a brief "burst" — a second heart layered over the
+ * real one that pops larger and fades (`.heart-burst`, index.css). Purely
+ * decorative: `onHeartToggle` already flips the real heart's fill
+ * synchronously, this never gates or delays that.
  */
 export function TechniqueCard({ tag, durationMinutes, label, description, selected, onClick, hearted, onHeartToggle }: TechniqueCardProps) {
+  const [bursting, setBursting] = useState(false)
+  const wasHearted = useRef(hearted)
+
+  useEffect(() => {
+    if (hearted && !wasHearted.current) {
+      setBursting(true)
+      const timer = window.setTimeout(() => setBursting(false), 450)
+      wasHearted.current = hearted
+      return () => window.clearTimeout(timer)
+    }
+    wasHearted.current = hearted
+  }, [hearted])
+
   return (
     <div className="relative w-full">
       <button
         type="button"
         aria-pressed={selected}
         onClick={onClick}
-        className="focus-ring flex w-full flex-col items-start gap-3 rounded-[16px] border border-solid p-4 text-left"
+        className="focus-ring pressable flex w-full flex-col items-start gap-3 rounded-[16px] border border-solid p-4 text-left"
         style={{
           backgroundColor: selected ? '#fef5f9' : '#fdfcfd',
           borderColor: selected ? '#f7d4e2' : '#eddde6',
@@ -68,9 +89,10 @@ export function TechniqueCard({ tag, durationMinutes, label, description, select
         }}
         aria-pressed={hearted}
         aria-label={hearted ? `Remove ${label} from Practices` : `Save ${label} to Practices`}
-        className="focus-ring absolute top-4 right-4 flex size-6 items-center justify-center"
+        className="focus-ring pressable absolute top-4 right-4 flex size-6 items-center justify-center"
       >
         <Heart size={24} weight={hearted ? 'fill' : 'regular'} className={hearted ? 'text-warm' : 'text-[#787d89]'} />
+        {bursting && <Heart size={24} weight="fill" aria-hidden="true" className="heart-burst pointer-events-none absolute inset-0 text-warm" />}
       </button>
     </div>
   )

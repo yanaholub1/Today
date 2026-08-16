@@ -6,9 +6,11 @@ import { RankedBarRow } from '../components/RankedBarRow'
 import { SheenSurface } from '../components/SheenSurface'
 import { MoodTrackerCard } from '../components/MoodTrackerCard'
 import { useDayLogStore } from '../lib/dayLogStore'
+import { useAuth } from '../lib/authStore'
 import { SPHERES } from '../lib/spheres'
 import type { SphereId } from '../lib/spheres'
-import { PATTERNS_MOCK_DAYS } from '../lib/patternsHistoryMock'
+import { fetchPastDayBundles, toPatternsMockDay } from '../lib/dayLogHistory'
+import type { PatternsMockDay } from '../lib/dayLogHistory'
 import { cn } from '../lib/cn'
 import {
   buildPatternsDataset,
@@ -123,14 +125,23 @@ function EmptyState() {
  *    already-filtered (i.e. unfiltered) dataset, per the brief's own
  *    example.
  *
- * Data: `useDayLogStore()` only ever holds ONE in-memory day ("today").
- * `buildPatternsDataset` merges it with the seeded `PATTERNS_MOCK_DAYS`
- * (`lib/patternsHistoryMock.ts`) after filtering by range/week/month —
- * every section below reads from that one filtered dataset.
- * `buildAvailableMonths`/`buildAvailableWeeks` deliberately don't depend
- * on that filtered dataset (months: reads the unfiltered full history so
- * its tabs don't circularly depend on which month is selected; weeks:
- * pure date math off `now`) — see each function's own doc comment.
+ * Data: `useDayLogStore()` only ever holds ONE live day ("today"; real
+ * Supabase data as of Stage 6). Everything before today comes from
+ * `fetchPastDayBundles` (`lib/dayLogHistory.ts`, shared with
+ * `EntriesScreen.tsx`'s own history section) — a real range query over
+ * `day_logs`/`intentions`/`mood_checkins`, fetched once on mount/user
+ * change into `pastDays` state, then adapted per-day via
+ * `toPatternsMockDay` into the `PatternsMockDay[]` shape
+ * `buildPatternsDataset`/`buildAvailableMonths` already expected (this
+ * used to be the seeded-PRNG `PATTERNS_MOCK_DAYS` from the now-deleted
+ * `patternsHistoryMock.ts` — same shape, real rows instead of generated
+ * ones). `buildPatternsDataset` merges `pastDays` with today after
+ * filtering by range/week/month — every section below reads from that one
+ * filtered dataset. `buildAvailableMonths`/`buildAvailableWeeks`
+ * deliberately don't depend on that filtered dataset (months: reads the
+ * unfiltered full history so its tabs don't circularly depend on which
+ * month is selected; weeks: pure date math off `now`) — see each
+ * function's own doc comment.
  *
  * No mood-quadrant color or icon (Fix 8/9/11) actually appears anywhere
  * in 323:3948's own fetched content — flagged per the brief's own
@@ -154,7 +165,23 @@ function EmptyState() {
  */
 export function PatternsScreen() {
   const { dayLog, intentions, moodCheckIns } = useDayLogStore()
+  const { userId } = useAuth()
   const now = useMemo(() => new Date(), [])
+
+  const [pastDays, setPastDays] = useState<PatternsMockDay[]>([])
+  useEffect(() => {
+    if (!userId) {
+      setPastDays([])
+      return
+    }
+    let cancelled = false
+    fetchPastDayBundles(userId).then((bundles) => {
+      if (!cancelled) setPastDays(bundles.map(toPatternsMockDay))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   const [subtab, setSubtab] = useState<PatternsSubtab>('intention')
   const [range, setRange] = useState<PatternsTimeRange>('all')
@@ -169,10 +196,10 @@ export function PatternsScreen() {
 
   const liveToday = dayLog ? { dayLog, intentions, moodCheckIns } : null
   const dataset = useMemo(
-    () => buildPatternsDataset(PATTERNS_MOCK_DAYS, liveToday, range, selectedWeekStart, selectedMonth),
-    [range, selectedWeekStart, selectedMonth, dayLog, intentions, moodCheckIns],
+    () => buildPatternsDataset(pastDays, liveToday, range, selectedWeekStart, selectedMonth),
+    [pastDays, range, selectedWeekStart, selectedMonth, dayLog, intentions, moodCheckIns],
   )
-  const availableMonths = useMemo(() => buildAvailableMonths(PATTERNS_MOCK_DAYS, liveToday, now), [now, dayLog, intentions, moodCheckIns])
+  const availableMonths = useMemo(() => buildAvailableMonths(pastDays, liveToday, now), [pastDays, now, dayLog, intentions, moodCheckIns])
 
   // The single 'all time' quick-filter tab's own label — its span comes
   // straight from the (in this case unfiltered) dataset's own min/max
@@ -279,7 +306,7 @@ export function PatternsScreen() {
                       // correction: toggling `border-b-2` on/off between states shifted each tab's own
                       // box height, making active vs inactive tabs render at different sizes. Only the
                       // border's visibility/color should change now, never the box it sits in.
-                      'focus-ring shrink-0 border-b-2 border-solid pt-4 pb-2 font-sans text-[15px] font-medium whitespace-nowrap',
+                      'focus-ring pressable shrink-0 border-b-2 border-solid pt-4 pb-2 font-sans text-[15px] font-medium whitespace-nowrap',
                       opt.active ? 'border-ink text-ink' : 'border-transparent text-ink/60',
                       frameOptions.length === 1 && i === 0 && 'ml-auto',
                     )}
@@ -428,7 +455,7 @@ export function PatternsScreen() {
                       scale="filter"
                       aria-pressed={sphereFilter === null}
                       onClick={() => setSphereFilter(null)}
-                      className="focus-ring flex h-10 shrink-0 items-center justify-center rounded-pill px-[13px]"
+                      className="focus-ring pressable flex h-10 shrink-0 items-center justify-center rounded-pill px-[13px]"
                     >
                       <span className="font-sans text-base font-medium whitespace-nowrap">All areas</span>
                     </SheenSurface>
@@ -445,7 +472,7 @@ export function PatternsScreen() {
                           scale="filter"
                           aria-pressed={selected}
                           onClick={() => setSphereFilter(id)}
-                          className="focus-ring flex h-10 shrink-0 items-center justify-center gap-2 rounded-pill pr-3.5 pl-3"
+                          className="focus-ring pressable flex h-10 shrink-0 items-center justify-center gap-2 rounded-pill pr-3.5 pl-3"
                         >
                           <Icon size={20} weight="fill" />
                           <span className="font-sans text-base font-medium whitespace-nowrap">{sphere.label}</span>
@@ -492,7 +519,7 @@ export function PatternsScreen() {
                           <button
                             type="button"
                             onClick={() => setHelperVisible((v) => v + 3)}
-                            className="focus-ring flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
+                            className="focus-ring pressable flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
                           >
                             Show 3 more
                           </button>
@@ -518,7 +545,7 @@ export function PatternsScreen() {
                           <button
                             type="button"
                             onClick={() => setObstacleVisible((v) => v + 3)}
-                            className="focus-ring flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
+                            className="focus-ring pressable flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
                           >
                             Show 3 more
                           </button>
@@ -572,7 +599,7 @@ export function PatternsScreen() {
                           <button
                             type="button"
                             onClick={() => setPracticesHelpedVisible((v) => v + 3)}
-                            className="focus-ring flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
+                            className="focus-ring pressable flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
                           >
                             Show 3 more
                           </button>
@@ -598,7 +625,7 @@ export function PatternsScreen() {
                           <button
                             type="button"
                             onClick={() => setPracticesDidntHelpVisible((v) => v + 3)}
-                            className="focus-ring flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
+                            className="focus-ring pressable flex h-10 w-full items-center justify-end font-sans text-[15px] font-medium tracking-[-0.14px] text-ink"
                           >
                             Show 3 more
                           </button>

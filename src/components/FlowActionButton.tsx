@@ -20,8 +20,11 @@ export function FlowActionButton({ variant = 'primary', className, ...rest }: Fl
     <button
       type="button"
       className={cn(
-        'focus-ring w-full rounded-pill px-6 py-4 text-center font-sans text-base font-medium transition-opacity disabled:opacity-40',
-        variant === 'primary' ? 'bg-warm text-white active:opacity-90' : 'text-warm active:opacity-70',
+        // Pressed feedback is the shared `.pressable` utility now (index.css)
+        // — replaces this button's own former per-variant `active:opacity-*`
+        // one-offs, motion pass.
+        'focus-ring pressable w-full rounded-pill px-6 py-4 text-center font-sans text-base font-medium disabled:opacity-40',
+        variant === 'primary' ? 'bg-warm text-white' : 'text-warm',
         className,
       )}
       {...rest}

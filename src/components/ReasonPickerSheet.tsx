@@ -77,7 +77,7 @@ export function ReasonPickerSheet({ open, title, tags, glad, value, onSelect, on
                   hue={selected ? 'sphere-selected' : 'sphere-pale'}
                   scale="filter"
                   aria-pressed={selected}
-                  className="focus-ring flex h-12 items-center justify-center rounded-pill px-3.5"
+                  className="focus-ring pressable flex h-12 items-center justify-center rounded-pill px-3.5"
                   onClick={() => onSelect(pair.id)}
                 >
                   <span className="font-sans text-base font-medium whitespace-nowrap">{reflectionTagLabel(pair, glad)}</span>

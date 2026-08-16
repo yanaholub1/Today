@@ -301,7 +301,7 @@ export function IntensitySlider({
               disabled={!active}
               onClick={() => handleLabelTap(i)}
               className={cn(
-                'focus-ring flex h-full flex-1 items-center transition-colors duration-150',
+                'focus-ring pressable flex h-full flex-1 items-center transition-colors duration-150',
                 isFirst ? 'justify-start text-left' : isLast ? 'justify-end text-right' : 'justify-center text-center',
                 isLabelActive ? 'font-semibold text-slider-label-active' : 'font-normal text-slider-label-default',
               )}

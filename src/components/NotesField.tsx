@@ -108,7 +108,7 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
             aria-label={recording ? 'Stop recording' : 'Record a voice note'}
             aria-pressed={recording}
             className={cn(
-              'focus-ring absolute right-2 bottom-2 flex size-7 shrink-0 items-center justify-center rounded-full',
+              'focus-ring pressable absolute right-2 bottom-2 flex size-7 shrink-0 items-center justify-center rounded-full',
               recording ? 'bg-warm text-white' : 'text-ink/60',
             )}
           >

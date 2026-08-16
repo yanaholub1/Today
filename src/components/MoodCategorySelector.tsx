@@ -39,7 +39,7 @@ export function MoodCategorySelector({ onSelect, className }: MoodCategorySelect
             key={quadrant.id}
             type="button"
             onClick={() => onSelect(quadrant.id)}
-            className="focus-ring flex aspect-square flex-col items-center justify-center gap-3 rounded-hero border border-solid px-4 py-5 text-center"
+            className="focus-ring pressable flex aspect-square flex-col items-center justify-center gap-3 rounded-hero border border-solid px-4 py-5 text-center"
             style={{
               backgroundColor: quadrant.fill,
               borderColor: quadrant.border,
