@@ -76,9 +76,15 @@ export interface UseSplashCollapseResult {
  * center already coincides with any of their own centers) → hold →
  * collapse onto the target's rect (cubic-bezier ease-out) → one CSS
  * `@keyframes` ball-drop bounce (`.splash-circle-bounce`, index.css) →
- * `onReveal()` → after `revealMs`, restore the target's opacity and
- * unmount the overlay in the same tick (imperceptible swap — the overlay
- * is by then sitting exactly where the target already is) → `onDone()`.
+ * `onReveal()`, and the target starts fading back in (opacity 0→1 over
+ * `revealMs`, `ease-out`) at the same moment — safe to do while the
+ * overlay is still fully opaque on top of it, so a caller whose own
+ * reveal is ALSO a same-duration opacity fade (e.g. OnboardingScreen's
+ * "t"/"day") can cross-fade in alongside the target, both reading as one
+ * motion rather than the target instantly popping in later → after
+ * `revealMs`, the overlay unmounts (imperceptible — the target is by then
+ * already fully visible, sitting exactly where the overlay was) →
+ * `onDone()`.
  *
  * Bounce timing (`BOUNCE_DOWN_MS`/`BOUNCE_UP_MS` above) is intentionally
  * NOT part of `UseSplashCollapseOptions` — `.splash-circle-bounce`'s own
@@ -151,10 +157,10 @@ export function useSplashCollapse({
     // Inner fill: native size is always SPLASH_CIRCLE_BASE_PX (also set
     // once) — only `transform: scale()` resizes it, between the giant
     // scale (fills the viewport) and the resting scale (matches the
-    // target). `translate(-50%, -50%)` re-centers it on the shell's own
-    // center regardless of its own larger native box.
+    // target, computed fresh at collapse time below, not from this
+    // mount-time `targetRect`). `translate(-50%, -50%)` re-centers it on
+    // the shell's own center regardless of its own larger native box.
     const giantScale = diameter / SPLASH_CIRCLE_BASE_PX
-    const restScale = targetRect.width / SPLASH_CIRCLE_BASE_PX
     circleFill.style.width = `${SPLASH_CIRCLE_BASE_PX}px`
     circleFill.style.height = `${SPLASH_CIRCLE_BASE_PX}px`
     circleFill.style.transform = `translate(-50%, -50%) scale(${giantScale})`
@@ -165,11 +171,40 @@ export function useSplashCollapse({
     void circle.offsetHeight
 
     const collapseTimer = window.setTimeout(() => {
+      // Re-measure right before locking in the landing target, rather
+      // than trusting the mount-time measurement above — the two most
+      // common causes of the target's real position moving between mount
+      // and now (a webfont's `font-display: swap` reflow once it
+      // finishes loading; any other async layout shift nearby) both have
+      // `holdMs` extra time to settle by this point. Correct the shell's
+      // native box AND its CURRENT (still-giant) transform together, in
+      // the same synchronous pass, so if the target genuinely hasn't
+      // moved this is a complete no-op, and if it has, the correction
+      // itself is invisible (still just a giant circle, no detail fine
+      // enough for a few px of re-centering to read as anything) — only
+      // the collapse's own END point, set right after, actually changes.
+      // Plain synchronous `setTimeout`, not an async gate like
+      // `document.fonts.ready` — deliberately: that approach was tried
+      // and reverted after it introduced a much worse, intermittent bug
+      // (see `useSplashCollapse`'s own doc comment history / git log).
+      // This has none of that risk, since nothing here depends on
+      // Promise-resolution timing relative to React's own render cycle.
+      const freshRect = target.getBoundingClientRect()
+      const freshCenterX = freshRect.left + freshRect.width / 2
+      const freshCenterY = freshRect.top + freshRect.height / 2
+      circle.style.left = `${freshRect.left}px`
+      circle.style.top = `${freshRect.top}px`
+      circle.style.width = `${freshRect.width}px`
+      circle.style.height = `${freshRect.height}px`
+      circle.style.transform = `translate(${giantCenterX - freshCenterX}px, ${giantCenterY - freshCenterY}px)`
+      void circle.offsetHeight // flush the correction above before the transition below, same reasoning as the initial giant setup
+
+      const freshRestScale = freshRect.width / SPLASH_CIRCLE_BASE_PX
       const transition = `transform ${collapseMs}ms cubic-bezier(0.16, 1, 0.3, 1)`
       circle.style.transition = transition
       circle.style.transform = 'translate(0, 0)'
       circleFill.style.transition = transition
-      circleFill.style.transform = `translate(-50%, -50%) scale(${restScale})`
+      circleFill.style.transform = `translate(-50%, -50%) scale(${freshRestScale})`
     }, holdMs)
 
     const bounceTimer = window.setTimeout(() => {
@@ -178,14 +213,27 @@ export function useSplashCollapse({
       circle.classList.add('splash-circle-bounce')
     }, holdMs + collapseMs)
 
+    // Target fades in HERE, over `revealMs`, not as an instant pop at
+    // `doneTimer` — so a caller whose own reveal (e.g. OnboardingScreen's
+    // "t"/"day") is ALSO a plain opacity fade over the same `revealMs` can
+    // cross-fade the target in ALONGSIDE it, both reading as one motion.
+    // Safe regardless of caller: the overlay is still fully opaque and
+    // sitting exactly on top of the target for this whole window (it only
+    // unmounts at `doneTimer`, below), so the target quietly finishing its
+    // fade-in UNDERNEATH is invisible either way — this only changes
+    // anything for a caller that also fades ITS OWN content in on the same
+    // clock, not for one relying on the old instant-swap behavior.
     const revealTimer = window.setTimeout(() => {
+      target.style.transition = `opacity ${revealMs}ms ease-out`
+      target.style.opacity = '1'
+      target.style.pointerEvents = ''
       onReveal?.()
     }, holdMs + collapseMs + BOUNCE_MS)
 
     const doneTimer = window.setTimeout(
       () => {
         target.style.opacity = ''
-        target.style.pointerEvents = ''
+        target.style.transition = ''
         setShowSplashCircle(false)
         onDone?.()
       },
@@ -199,6 +247,7 @@ export function useSplashCollapse({
       window.clearTimeout(doneTimer)
       target.style.opacity = ''
       target.style.pointerEvents = ''
+      target.style.transition = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])

@@ -22,10 +22,11 @@ const FEATURES = [
 // for the full sequence and timing rationale (slowed down from an earlier,
 // snappier ~1.4s pass per explicit feedback that it should read as
 // smoother, not abrupt). This is only this screen's OWN remaining timing
-// value: how long the "t"/"day" letters take to slide back + fade in once
-// the circle's bounce settles — handed to the hook as `revealMs` so its
-// final swap (restoring the real dot, unmounting the overlay) lands
-// exactly when this finishes, not before or after.
+// value: how long the "t"/"day" letters take to fade in once the circle's
+// bounce settles — handed to the hook as `revealMs` so the dot's own
+// fade-in (which the hook now drives on the same clock, see its own doc
+// comment) lands in lockstep with these letters, and so the hook's final
+// overlay-unmount lands exactly when this finishes, not before or after.
 const SPLASH_LETTERS_MS = 400
 
 function usePrefersReducedMotion(): boolean {
@@ -115,21 +116,41 @@ function usePrefersReducedMotion(): boolean {
  * frame's giant-circle state): plays once on mount, before the rest of
  * this screen's content appears, via `useSplashCollapse` (see that hook's
  * own doc comment for the shared giant-circle-collapses-onto-a-target
- * mechanics). This screen's own remaining job is just the "t"/"day"
- * letters: `onMeasured` (fired by the hook, mid-layout-effect, with the
- * dot's just-measured rect) pulls both letters in to overlap the dot's own
- * center (opacity 0) — visually swallowed by the still-giant circle —
- * `onReveal` (fired once the hook's bounce settles) slides them back to
- * their natural flex-laid-out position while fading in, and `onDone`
- * (fired once that reveal has had `SPLASH_LETTERS_MS` to finish) reveals
- * the rest of the screen's content (`contentVisible`, its own separate
- * `duration-300` fade below) — "letters slide out from within the circle
- * to reveal the full wordmark," per the brief.
+ * mechanics).
+ *
+ * Review fix: "t"/"day" used to be pulled in to overlap the dot's own
+ * measured center (opacity 0) at the start, then slid back out to their
+ * natural position while fading in once the circle landed — a deliberate
+ * "letters slide out from within the circle" effect, but one that made
+ * the WHOLE wordmark's final position depend on measuring the dot
+ * accurately at the exact moment the sequence started. In practice that
+ * measurement could land a few px off (this app's own webfonts use
+ * `font-display: swap`, which can reflow "t"/"day"'s true width shortly
+ * after this effect's own first run), and because the letters were
+ * ACTIVELY animated toward a point derived from that same measurement,
+ * any error was doubly visible — both the dot's landing spot AND the
+ * letters' own slide-back target would be off together.
+ *
+ * Now: "t"/"day" simply render in their real, natural flex-laid-out
+ * position from the start (never measured, never transformed) —
+ * `wordmarkVisible` below just fades them in, plain opacity, no motion of
+ * their own. The dot's own landing math still depends on measuring ITS
+ * rect (unavoidable — that's what the circle collapses onto), but a small
+ * error there now only ever means the dot lands a hair off mathematically
+ * perfect center in the letters' gap, never a visible mismatch between
+ * where letters slid FROM and where the dot actually ends up. `onReveal`
+ * (fired once the hook's bounce settles) flips `wordmarkVisible` true —
+ * `useSplashCollapse` cross-fades the real dot in on that SAME clock (see
+ * that hook's own doc comment), so dot and letters fade in together as
+ * one wordmark, not as two separately-timed pieces. `onDone` (fired once
+ * that fade has had `SPLASH_LETTERS_MS` to finish) reveals the rest of
+ * the screen's content (`contentVisible`, its own separate `duration-300`
+ * fade below).
  *
  * `prefers-reduced-motion: reduce` skips the whole sequence (`active:
- * !reducedMotion` below) — the overlay never mounts, `onMeasured`/
- * `onReveal`/`onDone` never fire, and the screen's real content
- * (including the letters, which are never touched) is visible
+ * !reducedMotion` below) — the overlay never mounts, `onReveal`/`onDone`
+ * never fire, and the screen's real content (including the wordmark,
+ * already `wordmarkVisible` from the start in this case) is visible
  * immediately.
  */
 export function OnboardingScreen() {
@@ -137,10 +158,9 @@ export function OnboardingScreen() {
   const reducedMotion = usePrefersReducedMotion()
 
   const [contentVisible, setContentVisible] = useState(reducedMotion)
+  const [wordmarkVisible, setWordmarkVisible] = useState(reducedMotion)
 
   const dotRef = useRef<HTMLImageElement>(null)
-  const tRef = useRef<HTMLSpanElement>(null)
-  const dayRef = useRef<HTMLSpanElement>(null)
 
   // `index.html`'s `theme-color` (and the manifest's matching `theme_color`)
   // is white, to match the plain white background every OTHER screen uses —
@@ -169,30 +189,7 @@ export function OnboardingScreen() {
     gradient: ONBOARDING_SPLASH_GRADIENT,
     centerYOffset: -27, // node 342:5736's giant circle sits 27px above true center — see useSplashCollapse's own doc comment
     revealMs: SPLASH_LETTERS_MS,
-    onMeasured: (dotRect) => {
-      const tEl = tRef.current
-      const dayEl = dayRef.current
-      if (!tEl || !dayEl) return
-      const dotCenterX = dotRect.left + dotRect.width / 2
-      const tRect = tEl.getBoundingClientRect()
-      const dayRect = dayEl.getBoundingClientRect()
-      tEl.style.transform = `translateX(${dotCenterX - (tRect.left + tRect.width / 2)}px)`
-      tEl.style.opacity = '0'
-      dayEl.style.transform = `translateX(${dotCenterX - (dayRect.left + dayRect.width / 2)}px)`
-      dayEl.style.opacity = '0'
-    },
-    onReveal: () => {
-      const tEl = tRef.current
-      const dayEl = dayRef.current
-      if (!tEl || !dayEl) return
-      const lettersTransition = `transform ${SPLASH_LETTERS_MS}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${SPLASH_LETTERS_MS}ms ease-out`
-      tEl.style.transition = lettersTransition
-      dayEl.style.transition = lettersTransition
-      tEl.style.transform = 'translateX(0)'
-      tEl.style.opacity = '1'
-      dayEl.style.transform = 'translateX(0)'
-      dayEl.style.opacity = '1'
-    },
+    onReveal: () => setWordmarkVisible(true),
     onDone: () => setContentVisible(true),
   })
 
@@ -224,10 +221,17 @@ export function OnboardingScreen() {
       className="relative mx-auto flex h-dvh w-full max-w-[393px] flex-col overflow-hidden px-5 pt-[max(4rem,calc(env(safe-area-inset-top)+1rem))] pb-[max(24px,env(safe-area-inset-bottom))]"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
-      <div className="flex items-center justify-center">
-        <span ref={tRef} className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">
-          t
-        </span>
+      {/*
+        `wordmarkVisible` fades "t"/"day" in, plain opacity, no transform
+        — see this file's own doc comment above for why they're never
+        measured or moved anymore. `duration-400 ease-out` must match
+        `SPLASH_LETTERS_MS`/the curve `useSplashCollapse` uses for the
+        dot's own fade (that hook's own doc comment) — that's what makes
+        dot and letters read as one wordmark fading in together rather
+        than two separately-timed pieces.
+      */}
+      <div className={cn('flex items-center justify-center transition-opacity duration-400 ease-out', wordmarkVisible ? 'opacity-100' : 'opacity-0')}>
+        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">t</span>
         {/*
           45×45 source (3x), displayed at 15×15 — a clean square crop of
           just the circle, see this file's own doc comment above.
@@ -235,15 +239,15 @@ export function OnboardingScreen() {
           above the "t"/"day" letters' vertical center at this font size
           (review fix, tuned down from an initial +5px per feedback) —
           nudged down to align, without touching the letters' own
-          position. `useSplashCollapse` reads this element's OWN measured
-          (post-transform) rect via `onMeasured`, so the splash animation's
+          position. `useSplashCollapse` measures this element's OWN rect
+          directly (it's the `targetRef`), so the splash animation's
           landing spot picks up this same offset automatically — one
-          source of truth, nothing to keep in sync by hand.
+          source of truth, nothing to keep in sync by hand. Its own
+          opacity is driven by the hook, not by `wordmarkVisible` above —
+          see that hook's own doc comment for why it's kept separate.
         */}
         <img ref={dotRef} src={wordmarkDot} alt="" className="h-[15px] w-[15px] translate-y-[2px]" />
-        <span ref={dayRef} className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">
-          day
-        </span>
+        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">day</span>
       </div>
 
       {/*
