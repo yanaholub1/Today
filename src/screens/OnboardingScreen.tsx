@@ -1,8 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GradientActionButton } from '../components/GradientActionButton'
 import { cn } from '../lib/cn'
 import { useThemeColor } from '../lib/useThemeColor'
+import { useSplashCollapse } from '../lib/useSplashCollapse'
+import { ONBOARDING_SPLASH_GRADIENT } from '../lib/splashGradients'
 import wordmarkDot from '../assets/OnboardingWordmarkDot.png'
 import noticeIcon from '../assets/OnboardingNotice.png'
 import connectIcon from '../assets/OnboardingConnect.png'
@@ -14,55 +16,18 @@ const FEATURES = [
   { icon: patternsIcon, title: 'Find your patterns', description: 'See what becomes a priority, and what helps or gets in the way.' },
 ] as const
 
-// Splash sequence timing (motion pass — get_design_context + get_screenshot
-// on node 342:5736). That node is a single static frame, not a Figma
-// prototype/smart-animate transition, so it has no timing/easing data of
-// its own to extract — only geometry. These ms values are this
-// implementation's own choice — slowed down from an earlier, snappier pass
-// (~1.4s total) per explicit feedback that it should read as smoother, not
-// abrupt; ~2.15s total now, still short enough to not feel like a loading
-// screen.
-const SPLASH_HOLD_MS = 200 // giant circle sits at full size before collapsing — "fills the screen, THEN collapses"
-const SPLASH_COLLAPSE_MS = 950
-// Explicit request: a single ball-drop bounce against the wordmark row,
-// after the collapse settles and before the letters appear — not part of
-// the collapse's own motion (that stays a clean, non-overshooting ease-out
-// so the "landing" reads as one distinct beat, not a blurred-together
-// wobble). Implemented as the `.splash-circle-bounce` CSS `@keyframes`
-// (index.css) — review fix: an earlier version chained two separately
-// JS-reassigned `transition`s (drop, then spring back), which visibly
-// distorted the circle's shape for a frame during the handoff between
-// them. A single declarative keyframe animation, touching only
-// `translateY`, removes that risk by construction — see index.css's own
-// doc comment for the full explanation. `SPLASH_BOUNCE_DOWN_MS` +
-// `SPLASH_BOUNCE_UP_MS` must sum to what's set as the animation's
-// duration below, and their ratio must match the keyframe's own 36% peak
-// point in index.css — both noted at each end so they don't drift apart.
-const SPLASH_BOUNCE_DOWN_MS = 200
-const SPLASH_BOUNCE_UP_MS = 350
-const SPLASH_BOUNCE_MS = SPLASH_BOUNCE_DOWN_MS + SPLASH_BOUNCE_UP_MS
-const SPLASH_BOUNCE_DROP_PX = 12
+// The circle's own giant/hold/collapse/bounce timing now lives in
+// `useSplashCollapse` (src/lib/useSplashCollapse.ts), shared with
+// BottomNav's own check-in-FAB splash — see that hook's own doc comment
+// for the full sequence and timing rationale (slowed down from an earlier,
+// snappier ~1.4s pass per explicit feedback that it should read as
+// smoother, not abrupt). This is only this screen's OWN remaining timing
+// value: how long the "t"/"day" letters take to fade in once the circle's
+// bounce settles — handed to the hook as `revealMs` so the dot's own
+// fade-in (which the hook now drives on the same clock, see its own doc
+// comment) lands in lockstep with these letters, and so the hook's final
+// overlay-unmount lands exactly when this finishes, not before or after.
 const SPLASH_LETTERS_MS = 400
-
-// Node 342:5736's own giant circle, verified via get_metadata: an ellipse
-// named "Ellipse 20" — the SAME name as the small circle inside the
-// wordmark's dot (also "Ellipse 20", confirming it's literally the same
-// shape at two scales) — sized 1004×1004px, centered horizontally, and
-// vertically 27px above the frame's own center (`top: calc(50% - 27px)`
-// in the fetched code). Used as the default diameter (the common case,
-// since this app's own frame is fixed at the same 393px width Figma's
-// frame used); `Math.hypot(...)` is a fallback only for a container whose
-// diagonal would otherwise exceed 1004px's coverage, so corners are never
-// left unpainted on an unusually tall viewport.
-const SPLASH_GIANT_DIAMETER = 1004
-const SPLASH_CENTER_Y_OFFSET = -27
-
-// The fill circle's own native (untransformed) size — see this file's own
-// doc comment above `OnboardingScreen` for why 400, not the real dot's
-// ~15px or the full giant diameter. Chosen so both `giantScale` (~2.5x at
-// this app's own frame width) and `restScale` (~0.04x) stay comfortably
-// inside "ordinary image scaling," nowhere near either extreme.
-const SPLASH_CIRCLE_BASE_PX = 400
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -149,76 +114,53 @@ function usePrefersReducedMotion(): boolean {
  *
  * Motion pass — logo splash (node 342:5736, "iPhone 16 - 340", the same
  * frame's giant-circle state): plays once on mount, before the rest of
- * this screen's content appears. TWO overlay `<div>`s, not one — an outer
- * positioning shell (`circleRef`) and an inner fill circle
- * (`circleFillRef`) — sized/placed via a `useLayoutEffect` FLIP, both
- * driven purely by `transform` (never `left`/`top`/`width`/`height`).
- * This two-element split, and the fill's `SPLASH_CIRCLE_BASE_PX` native
- * size, is itself a review fix with a two-stage history worth knowing if
- * this ever needs touching again:
+ * this screen's content appears, via `useSplashCollapse` (see that hook's
+ * own doc comment for the shared giant-circle-collapses-onto-a-target
+ * mechanics).
  *
- * 1. The FIRST version was one div, native-sized to the real wordmark
- *    dot's ~15px rect, blown up to giant size via `transform: scale(~67x)`.
- *    Browsers rasterize a transformed element at roughly its own
- *    pre-transform size and stretch that bitmap for compositing — a 67x
- *    stretch of a 15px source came out visibly pixelated.
- * 2. The SECOND version "fixed" that by animating real `left`/`top`/
- *    `width`/`height` on a single ~1000px div instead of using `transform`
- *    at all — crisp (every size is repainted fresh, no stretched bitmap),
- *    but animating real box dimensions forces a full layout reflow on
- *    every frame. On a real phone (worse still in Low Power Mode) that
- *    reflow can't keep pace with the `window.setTimeout` schedule below,
- *    so the visual shrink lagged behind the JS timers — `doneTimer` fired
- *    (swapping in the real dot + content) while the overlay, mid-reflow,
- *    was still large and visibly straining. Confirmed on-device, not
- *    hypothetical.
+ * Review fix: "t"/"day" used to be pulled in to overlap the dot's own
+ * measured center (opacity 0) at the start, then slid back out to their
+ * natural position while fading in once the circle landed — a deliberate
+ * "letters slide out from within the circle" effect, but one that made
+ * the WHOLE wordmark's final position depend on measuring the dot
+ * accurately at the exact moment the sequence started. In practice that
+ * measurement could land a few px off (this app's own webfonts use
+ * `font-display: swap`, which can reflow "t"/"day"'s true width shortly
+ * after this effect's own first run), and because the letters were
+ * ACTIVELY animated toward a point derived from that same measurement,
+ * any error was doubly visible — both the dot's landing spot AND the
+ * letters' own slide-back target would be off together.
  *
- * The fix used now avoids BOTH failure modes by decoupling POSITION from
- * SCALE onto two elements: the outer shell's native size/position is
- * ALWAYS exactly the real dot's small `circleRect` (never animated) and
- * only ever gets `transform: translate()` — ordinary translation doesn't
- * resample a bitmap, so it can't blur regardless of distance. The inner
- * fill circle's native size is ALWAYS `SPLASH_CIRCLE_BASE_PX` (400px,
- * also never animated as a real dimension) and only ever gets
- * `transform: scale()` — because its native size is already close to
- * both the giant and resting displayed sizes, neither direction is an
- * extreme stretch, so no visible blur. Both are pure compositor-only
- * `transform` transitions (no reflow), so this performs like the FIRST
- * version, not the second, while looking as crisp as neither alone
- * managed. `giantScale`/`restScale` below are the inner circle's two
- * endpoints; `tx`/`ty` are the outer shell's own two endpoints — both
- * computed once, up front, from measured DOM rects (not hardcoded Figma
- * offsets), so this stays correct regardless of layout differences from
- * the adapted-flexible-column structure below. The `t`/`day` letters get
- * a similar treatment in miniature: pulled in to overlap the dot's center
- * (opacity 0) at start, then slid back to their natural flex-laid-out
- * position once the circle has finished collapsing AND bounced —
- * "letters slide out from within the circle to reveal the full wordmark,"
- * per the brief. Explicit request: between the collapse settling and the
- * letters appearing, the circle does one ball-drop bounce against the
- * wordmark row (`translateY` down then back up with a slight
- * overshoot-settle, see the timing constants' own doc comment) — applied
- * to the OUTER shell only, whose resting transform reduces to a no-op
- * translate, so the existing `translateY`-only keyframes still compose
- * correctly on top without needing to know about the inner fill circle
- * at all.
+ * Now: "t"/"day" simply render in their real, natural flex-laid-out
+ * position from the start (never measured, never transformed) —
+ * `wordmarkVisible` below just fades them in, plain opacity, no motion of
+ * their own. The dot's own landing math still depends on measuring ITS
+ * rect (unavoidable — that's what the circle collapses onto), but a small
+ * error there now only ever means the dot lands a hair off mathematically
+ * perfect center in the letters' gap, never a visible mismatch between
+ * where letters slid FROM and where the dot actually ends up. `onReveal`
+ * (fired once the hook's bounce settles) flips `wordmarkVisible` true —
+ * `useSplashCollapse` cross-fades the real dot in on that SAME clock (see
+ * that hook's own doc comment), so dot and letters fade in together as
+ * one wordmark, not as two separately-timed pieces. `onDone` (fired once
+ * that fade has had `SPLASH_LETTERS_MS` to finish) reveals the rest of
+ * the screen's content (`contentVisible`, its own separate `duration-300`
+ * fade below).
  *
- * `prefers-reduced-motion: reduce` skips the whole sequence — the overlay
- * never mounts and the screen's real content is visible immediately.
+ * `prefers-reduced-motion: reduce` skips the whole sequence (`active:
+ * !reducedMotion` below) — the overlay never mounts, `onReveal`/`onDone`
+ * never fire, and the screen's real content (including the wordmark,
+ * already `wordmarkVisible` from the start in this case) is visible
+ * immediately.
  */
 export function OnboardingScreen() {
   const navigate = useNavigate()
   const reducedMotion = usePrefersReducedMotion()
 
   const [contentVisible, setContentVisible] = useState(reducedMotion)
-  const [showSplashCircle, setShowSplashCircle] = useState(!reducedMotion)
+  const [wordmarkVisible, setWordmarkVisible] = useState(reducedMotion)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const circleRef = useRef<HTMLDivElement>(null)
-  const circleFillRef = useRef<HTMLDivElement>(null)
   const dotRef = useRef<HTMLImageElement>(null)
-  const tRef = useRef<HTMLSpanElement>(null)
-  const dayRef = useRef<HTMLSpanElement>(null)
 
   // `index.html`'s `theme-color` (and the manifest's matching `theme_color`)
   // is white, to match the plain white background every OTHER screen uses —
@@ -241,149 +183,15 @@ export function OnboardingScreen() {
   // cover.
   useThemeColor('#ffdcf5')
 
-  useLayoutEffect(() => {
-    if (reducedMotion) return
-    const container = containerRef.current
-    const circle = circleRef.current
-    const circleFill = circleFillRef.current
-    const dot = dotRef.current
-    const tEl = tRef.current
-    const dayEl = dayRef.current
-    if (!container || !circle || !circleFill || !dot || !tEl || !dayEl) return
-
-    // The real dot <img> is measured for its rect below, but was never
-    // actually hidden — review fix: the overlay circle only ever LOOKED
-    // like the one true circle because it happened to sit exactly on top
-    // of this real one at rest. The moment the bounce moves the overlay
-    // away (`translateY`), the real dot underneath is uncovered — two
-    // visible circles, one static (this one) and one bouncing (the
-    // overlay). Hiding the real dot for the sequence's duration and
-    // restoring it once the overlay has fully faded/unmounted (doneTimer
-    // below, and the cleanup on early unmount) makes the handoff seamless.
-    dot.style.opacity = '0'
-
-    const containerRect = container.getBoundingClientRect()
-    const dotRect = dot.getBoundingClientRect()
-
-    // `OnboardingWordmarkDot.png` (review fix — swapped from a live-rendered
-    // SVG to a pre-rasterized PNG to fix persistent blur/clipping: an SVG's
-    // internal filter/canvas margins can get clipped when consumed via
-    // `<img>` regardless of the SVG's own `overflow` setting, a class of
-    // bug a plain raster export sidesteps entirely). This asset is a tight
-    // SQUARE crop of just the circle itself — no asymmetric padding baked
-    // in on any side (unlike the old SVG, which had 5px of clearance above
-    // the circle but none on its other 3 sides) — so the `<img>`'s own
-    // measured rect IS the circle's rect, with nothing to derive.
-    const circleRect = dotRect
-    const dotCenterX = circleRect.left + circleRect.width / 2
-    const dotCenterY = circleRect.top + circleRect.height / 2
-
-    const diameter = Math.max(SPLASH_GIANT_DIAMETER, Math.hypot(containerRect.width, containerRect.height) * 1.15)
-    const targetCenterX = containerRect.left + containerRect.width / 2
-    const targetCenterY = containerRect.top + containerRect.height / 2 + SPLASH_CENTER_Y_OFFSET
-
-    // Outer shell: native size/position is ALWAYS the real dot's small
-    // `circleRect` (set once, never animated) — only `transform: translate()`
-    // moves it, from the giant state's screen-centered position back to
-    // (0,0), i.e. its own native spot. See this component's own doc
-    // comment for why position and scale are split across two elements.
-    const tx = targetCenterX - dotCenterX
-    const ty = targetCenterY - dotCenterY
-    circle.style.left = `${circleRect.left}px`
-    circle.style.top = `${circleRect.top}px`
-    circle.style.width = `${circleRect.width}px`
-    circle.style.height = `${circleRect.height}px`
-    circle.style.transform = `translate(${tx}px, ${ty}px)`
-
-    // Inner fill circle: native size is ALWAYS `SPLASH_CIRCLE_BASE_PX`
-    // (also set once, never animated) — only `transform: scale()` resizes
-    // it, between `giantScale` (fills the screen) and `restScale` (matches
-    // the real dot). `translate(-50%, -50%)` re-centers it on the outer
-    // shell's own center regardless of its own larger native box — the
-    // percentages resolve against ITS OWN untransformed size, so this
-    // stays correct however `SPLASH_CIRCLE_BASE_PX` is tuned.
-    const giantScale = diameter / SPLASH_CIRCLE_BASE_PX
-    const restScale = circleRect.width / SPLASH_CIRCLE_BASE_PX
-    circleFill.style.width = `${SPLASH_CIRCLE_BASE_PX}px`
-    circleFill.style.height = `${SPLASH_CIRCLE_BASE_PX}px`
-    circleFill.style.transform = `translate(-50%, -50%) scale(${giantScale})`
-
-    // Letters start pulled onto the dot's own center — visually swallowed
-    // by the (still giant, or just-landed) circle.
-    const tRect = tEl.getBoundingClientRect()
-    const dayRect = dayEl.getBoundingClientRect()
-    tEl.style.transform = `translateX(${dotCenterX - (tRect.left + tRect.width / 2)}px)`
-    tEl.style.opacity = '0'
-    dayEl.style.transform = `translateX(${dotCenterX - (dayRect.left + dayRect.width / 2)}px)`
-    dayEl.style.opacity = '0'
-
-    // Flushes the styles above as a real paint before the timers below
-    // change them again — without this the browser can coalesce both
-    // states into one frame and skip the transition entirely.
-    void circle.offsetHeight
-
-    const collapseTimer = window.setTimeout(() => {
-      const transition = `transform ${SPLASH_COLLAPSE_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`
-      circle.style.transition = transition
-      circle.style.transform = 'translate(0, 0)'
-      circleFill.style.transition = transition
-      circleFill.style.transform = `translate(-50%, -50%) scale(${restScale})`
-    }, SPLASH_HOLD_MS)
-
-    // Bounce — a single CSS `@keyframes` animation (`.splash-circle-bounce`,
-    // index.css), not further inline-style transitions: see that class's
-    // own doc comment and this file's `SPLASH_BOUNCE_*` constants for why.
-    // Setting the custom property + duration here (rather than hardcoding
-    // them in the CSS class) keeps the drop distance/timing tunable from
-    // one place; adding the class is what actually starts the animation.
-    const bounceTimer = window.setTimeout(() => {
-      circle.style.setProperty('--splash-bounce-drop', `${SPLASH_BOUNCE_DROP_PX}px`)
-      circle.style.animationDuration = `${SPLASH_BOUNCE_MS}ms`
-      circle.classList.add('splash-circle-bounce')
-    }, SPLASH_HOLD_MS + SPLASH_COLLAPSE_MS)
-
-    const lettersTimer = window.setTimeout(
-      () => {
-        const lettersTransition = `transform ${SPLASH_LETTERS_MS}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${SPLASH_LETTERS_MS}ms ease-out`
-        tEl.style.transition = lettersTransition
-        dayEl.style.transition = lettersTransition
-        tEl.style.transform = 'translateX(0)'
-        tEl.style.opacity = '1'
-        dayEl.style.transform = 'translateX(0)'
-        dayEl.style.opacity = '1'
-      },
-      SPLASH_HOLD_MS + SPLASH_COLLAPSE_MS + SPLASH_BOUNCE_MS,
-    )
-
-    // Review fix: this used to fade the overlay's own opacity to 0, then
-    // separately (after that fade finished) snap the real dot's opacity
-    // from 0 to 1 with no transition of its own — a fade-to-nothing
-    // followed by an instant pop reads exactly as "disappears, then
-    // reappears," even though the two are pixel-aligned and the fade was
-    // pointless: the overlay IS already sitting exactly where the real dot
-    // needs to be, so there's nothing to visually hand off. Swapping them
-    // in the same tick, with neither given an opacity transition, is
-    // completely imperceptible — same pixels, before and after. The rest
-    // of the screen's own reveal (`contentVisible`, its own separate
-    // `duration-300` fade in the JSX below) is unrelated and keeps its own
-    // timing.
-    const doneTimer = window.setTimeout(
-      () => {
-        dot.style.opacity = ''
-        setShowSplashCircle(false)
-        setContentVisible(true)
-      },
-      SPLASH_HOLD_MS + SPLASH_COLLAPSE_MS + SPLASH_BOUNCE_MS + SPLASH_LETTERS_MS,
-    )
-
-    return () => {
-      window.clearTimeout(collapseTimer)
-      window.clearTimeout(bounceTimer)
-      window.clearTimeout(lettersTimer)
-      window.clearTimeout(doneTimer)
-      dot.style.opacity = ''
-    }
-  }, [reducedMotion])
+  const { circleRef, circleFillRef, showSplashCircle } = useSplashCollapse({
+    active: !reducedMotion,
+    targetRef: dotRef,
+    gradient: ONBOARDING_SPLASH_GRADIENT,
+    centerYOffset: -27, // node 342:5736's giant circle sits 27px above true center — see useSplashCollapse's own doc comment
+    revealMs: SPLASH_LETTERS_MS,
+    onReveal: () => setWordmarkVisible(true),
+    onDone: () => setContentVisible(true),
+  })
 
   const finishOnboarding = () => navigate('/register')
 
@@ -410,14 +218,20 @@ export function OnboardingScreen() {
   // correct height unit, not just APPEAR to via the `vh` mismatch above.
   return (
     <div
-      ref={containerRef}
       className="relative mx-auto flex h-dvh w-full max-w-[393px] flex-col overflow-hidden px-5 pt-[max(4rem,calc(env(safe-area-inset-top)+1rem))] pb-[max(24px,env(safe-area-inset-bottom))]"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
-      <div className="flex items-center justify-center">
-        <span ref={tRef} className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">
-          t
-        </span>
+      {/*
+        `wordmarkVisible` fades "t"/"day" in, plain opacity, no transform
+        — see this file's own doc comment above for why they're never
+        measured or moved anymore. `duration-400 ease-out` must match
+        `SPLASH_LETTERS_MS`/the curve `useSplashCollapse` uses for the
+        dot's own fade (that hook's own doc comment) — that's what makes
+        dot and letters read as one wordmark fading in together rather
+        than two separately-timed pieces.
+      */}
+      <div className={cn('flex items-center justify-center transition-opacity duration-400 ease-out', wordmarkVisible ? 'opacity-100' : 'opacity-0')}>
+        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">t</span>
         {/*
           45×45 source (3x), displayed at 15×15 — a clean square crop of
           just the circle, see this file's own doc comment above.
@@ -425,15 +239,15 @@ export function OnboardingScreen() {
           above the "t"/"day" letters' vertical center at this font size
           (review fix, tuned down from an initial +5px per feedback) —
           nudged down to align, without touching the letters' own
-          position. `circleRect` below reads this element's OWN measured
-          (post-transform) rect, so the splash animation's landing spot
-          picks up this same offset automatically — one source of truth,
-          nothing to keep in sync by hand.
+          position. `useSplashCollapse` measures this element's OWN rect
+          directly (it's the `targetRef`), so the splash animation's
+          landing spot picks up this same offset automatically — one
+          source of truth, nothing to keep in sync by hand. Its own
+          opacity is driven by the hook, not by `wordmarkVisible` above —
+          see that hook's own doc comment for why it's kept separate.
         */}
         <img ref={dotRef} src={wordmarkDot} alt="" className="h-[15px] w-[15px] translate-y-[2px]" />
-        <span ref={dayRef} className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">
-          day
-        </span>
+        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">day</span>
       </div>
 
       {/*
@@ -481,11 +295,7 @@ export function OnboardingScreen() {
 
       {showSplashCircle && (
         <div ref={circleRef} aria-hidden="true" className="pointer-events-none fixed z-50">
-          <div
-            ref={circleFillRef}
-            className="absolute top-1/2 left-1/2 rounded-full"
-            style={{ backgroundImage: 'linear-gradient(180deg, #F684C3, #F00A5B)' }}
-          />
+          <div ref={circleFillRef} className="absolute top-1/2 left-1/2 rounded-full" />
         </div>
       )}
     </div>
