@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import TokenPreview from './TokenPreview'
 import ComponentLibraryPreview from './ComponentLibraryPreview'
@@ -16,19 +17,51 @@ import { MoodFlowScreen } from './screens/MoodFlowScreen'
 import { DayDetailScreen } from './screens/DayDetailScreen'
 import { DayLogStoreProvider, useDayLogStore } from './lib/dayLogStore'
 import { AuthProvider, useAuth } from './lib/authStore'
+import { useThemeColor } from './lib/useThemeColor'
 
 /**
  * Shown only for the brief window before Supabase's initial `getSession()`
  * resolves (see authStore.tsx's own doc comment) — a real value beats a
  * blank flash of onboarding/app content while a persisted session is still
- * being confirmed. Plain, not styled as a real screen: this state is
- * typically invisible in practice (local session lookup is fast).
+ * being confirmed.
+ *
+ * Review fix: this used to always be a plain white screen with a "Loading…"
+ * label, regardless of what it was about to lead into — for a fresh,
+ * signed-out visitor (the common case: no session yet, about to land on
+ * Onboarding's own pink gradient), that meant a visible white-then-pink
+ * flash, plus a label that only ever shows for well under a second and so
+ * reads as a glitch more than a real loading state. Neither is needed:
+ * Supabase persists a session to `localStorage` under a `sb-*-auth-token`
+ * key, and that persisted value is there SYNCHRONOUSLY, before its own
+ * `getSession()` call (an async round-trip through the SDK's internal
+ * lock) resolves — so `hasPersistedSupabaseSession` below can make an
+ * immediate, no-network guess at which background this screen should
+ * already be, without waiting on `status` to leave `'loading'`. Wrong
+ * guesses (a stale/expired token, or a session that fails to restore)
+ * self-correct the moment `status` actually resolves and the parent guard
+ * re-renders real content — this component never makes routing decisions,
+ * only a cosmetic one. The same `#ffdcf5` swap OnboardingScreen itself
+ * applies once mounted (`useThemeColor`) is applied speculatively here too
+ * — otherwise the content would already read as pink while the mobile
+ * status bar/toolbar chrome stayed white for this same brief window,
+ * re-opening the exact seam that swap exists to close.
  */
+function hasPersistedSupabaseSession(): boolean {
+  try {
+    return Object.keys(localStorage).some((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
+  } catch {
+    return false
+  }
+}
+
 function AuthLoadingScreen() {
+  const [pink] = useState(() => !hasPersistedSupabaseSession())
+  useThemeColor(pink && '#ffdcf5')
   return (
-    <div className="mx-auto flex h-screen w-full max-w-[393px] items-center justify-center bg-white">
-      <p className="font-sans text-base text-ink/60">Loading…</p>
-    </div>
+    <div
+      className="mx-auto h-screen w-full max-w-[393px]"
+      style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}
+    />
   )
 }
 

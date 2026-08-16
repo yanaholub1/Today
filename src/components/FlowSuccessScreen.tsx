@@ -41,7 +41,17 @@ export function FlowSuccessScreen({ icon, title, subtitle, onClose, onDone, done
           <p className="font-sans text-base leading-[1.5] text-ink">{subtitle}</p>
         </div>
       </div>
-      <div className="px-5 pt-4 pb-5">
+      {/*
+        `pb-[max(20px,env(safe-area-inset-bottom))]` (review fix): this
+        wrapper's `pb-5` (20px) was a fixed value from before
+        `viewport-fit=cover` went global — this is the true bottom-of-
+        screen element for every flow that ends on this shared success
+        template (mood check-in, both intention flows, and Registration's
+        own "check your email" step), so it's now exposed to the same
+        home-indicator gap `pt-[max(16px,env(safe-area-inset-top))]`
+        above already handles for the top. Same pattern, same reasoning.
+      */}
+      <div className="px-5 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">
         <GradientActionButton variant="secondary" onClick={onDone}>
           {doneLabel}
         </GradientActionButton>

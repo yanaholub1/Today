@@ -164,7 +164,8 @@ export function MorningIntentionFlow() {
     return (
       <>
         <TaskFlowHeader title="Set today's intention" exit="close" onExit={() => navigate('/checkin')} />
-        <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-8">
+        {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
+        <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
           {/*
             gap-4 — the app's usual title-to-content spacing. Review fix:
             was gap-9 (36px) to clear the slider's old floating knob, which
@@ -202,7 +203,8 @@ export function MorningIntentionFlow() {
   return (
     <>
       <TaskFlowHeader title="Set today's intention" exit="close" onExit={() => navigate('/checkin')} />
-      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-8">
+      {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
+      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">

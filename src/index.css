@@ -173,9 +173,17 @@
   --radius-pill: 400px;
 }
 
+/*
+  `background` here matches index.html's own inline `style="background:
+  #F63176"` on <body> (explicit request) — that inline attribute is what
+  actually prevents the pre-JS flash-of-white (it paints before this
+  stylesheet can even load), so this rule exists only so the two stay in
+  sync once this file DOES load, rather than silently disagreeing with
+  what's already on screen.
+*/
 body {
   margin: 0;
-  background: white;
+  background: #F63176;
   color: var(--color-ink);
   font-family: var(--font-sans);
 }

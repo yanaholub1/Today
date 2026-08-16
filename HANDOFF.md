@@ -4,7 +4,7 @@ A React 19 + TypeScript + Vite + Tailwind CSS v4 wellness app ("Today" — mood 
 
 ## ⚠️ Read this first
 
-**The working tree has a large amount of uncommitted work.** `git log` shows exactly one commit (`64afff3`, "Baseline snapshot before Supabase migration") — everything since then (the entire Supabase migration + all motion work described below) is **uncommitted**. Run `git status` before doing anything destructive. The user has asked to commit once before and then interrupted the request — it's still pending. Don't commit without asking first (per this project's own established norm this session).
+Everything described below (the entire Supabase migration + all motion work) is committed: `git log` shows `2c8f6dc` ("Migrate to real Supabase backend and add a motion pass") on top of the earlier `64afff3` baseline. Working tree is clean as of that commit — `git status` before doing anything destructive, as always, but there's no backlog of uncommitted work to worry about right now.
 
 ## Running it locally
 

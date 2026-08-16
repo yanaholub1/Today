@@ -160,7 +160,8 @@ export function EveningReflectionFlow() {
         exit="close"
         onExit={() => navigate('/checkin')}
       />
-      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-8">
+      {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
+      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-3">
           <p className="font-sans text-base font-medium text-ink">Glad about how this went?</p>
           <div className="flex w-full flex-col gap-2 rounded-[12px] border border-solid border-[#eddde6] p-3">

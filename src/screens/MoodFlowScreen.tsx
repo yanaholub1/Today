@@ -268,7 +268,8 @@ export function MoodFlowScreen() {
               </>
             )}
           </div>
-          <div className="flex shrink-0 flex-col gap-4 px-5 pt-4 pb-8">
+          {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
+          <div className="flex shrink-0 flex-col gap-4 px-5 pt-4 pb-[max(32px,env(safe-area-inset-bottom))]">
             {emotion && <EmotionExplanationCard emotion={emotion} quadrant={quadrant} />}
             <GradientActionButton disabled={!emotion} onClick={goNext}>
               Continue
@@ -276,7 +277,8 @@ export function MoodFlowScreen() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pt-4 pb-8">
+        // review fix: pb-[max(32px,env(safe-area-inset-bottom))] below — same bottom-safe-area fix as this file's other branch, this container's own flex-1 spacer pushes each step's button group down to sit flush against this same bottom edge.
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pt-4 pb-[max(32px,env(safe-area-inset-bottom))]">
           {step === 'quadrant' && (
             <>
               <MoodCategorySelector

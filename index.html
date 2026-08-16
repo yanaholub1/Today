@@ -2,16 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Today</title>
     <!-- App icon (review fix) — generated from the project's Icon.png (3072x3072 source, already opaque so no background compositing needed). No favicon.ico: this scaffold never had one and modern browsers read the PNG link tags directly, so skipping it avoids pulling in an image-conversion dependency for one legacy format. -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#f83b7d" />
+    <meta name="theme-color" content="#ffffff" />
   </head>
-  <body>
+  <!--
+    `style` here (not just `src/index.css`'s own `body` rule) is
+    deliberate: this inline attribute paints the instant the HTML parser
+    reaches this tag, with zero dependency on any external stylesheet or
+    the JS bundle finishing — the only way to guarantee there's no flash
+    of the browser's own default white before anything else can paint
+    over it. `#F63176` (explicit request) is the middle stop of
+    GradientActionButton's own primary gradient — same pink/magenta
+    family as Onboarding's splash-circle gradient (`#F684C3`→`#F00A5B`),
+    close enough that the blank instant before any JS runs and the
+    animation that follows it read as one continuous moment, not a
+    flash-then-swap.
+  -->
+  <body style="background: #F63176">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

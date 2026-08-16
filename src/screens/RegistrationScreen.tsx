@@ -77,7 +77,20 @@ export function RegistrationScreen() {
   return (
     <div className="mx-auto flex h-screen w-full max-w-[393px] flex-col bg-white">
       <TaskFlowHeader exit="back" onExit={() => navigate('/onboarding')} />
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col px-5 pt-6 pb-8">
+      {/*
+        `pb-[max(32px,env(safe-area-inset-bottom))]` (review fix): this
+        form's own `pb-8` (32px) was a fixed value from before
+        `viewport-fit=cover` went global — once that flag let the page
+        paint under the home indicator, this became the button's only
+        clearance from it, and 32px isn't enough (the indicator's own
+        safe-area inset is ~34px on notched iPhones). Same pattern
+        already used by BottomNav.tsx/TaskFlowHeader.tsx (there:
+        `env(safe-area-inset-top)`) — `max()` keeps this screen's own
+        32px as the floor on non-notched devices (env() resolves to 0
+        there, so nothing changes) and only grows past it when the real
+        inset demands more.
+      */}
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-2">
           <h1 className="font-serif text-2xl text-ink">Sign in to Today</h1>
           <p className="font-sans text-base text-ink/70">We'll email you a magic link — no password needed.</p>
