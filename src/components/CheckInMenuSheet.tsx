@@ -3,6 +3,7 @@ import { Flower } from '@phosphor-icons/react'
 import { GradientActionButton } from './GradientActionButton'
 import { useDayLogStore } from '../lib/dayLogStore'
 import { deriveIntentionState, INTENTION_STATE_CONFIG } from '../lib/intentionState'
+import { getIntentionCutoffTime, formatCutoffTime } from '../lib/intentionCutoff'
 
 export interface CheckInMenuSheetProps {
   open: boolean
@@ -25,9 +26,19 @@ export interface CheckInMenuSheetProps {
  * intention"/"Check in mood" pair), just a different shape (icon beside
  * label at a fixed height, not a big stacked card). "Set intention" still
  * reuses `INTENTION_STATE_CONFIG` for its label/icon/variant/tappable/
- * disabled state — that 4-state logic isn't specific to any one
+ * disabled state — that 5-state logic isn't specific to any one
  * component, it's the app's real intention-flow entry-point behavior.
  * "Check in mood" stays static, same as before.
+ *
+ * Review fix — `unsetPastCutoff` (intentionState.ts) renders the SAME
+ * disabled "Set intention" button as `reflected` already did, plus one
+ * new small caption underneath naming the actual chosen cutoff time (the
+ * config entry itself can't hold this — it's a static Record, and the
+ * message needs the user's own live setting). Explicit requirement: this
+ * is disabled at THIS entry point, not a route-level block — the flow
+ * itself stays directly reachable (IntentionFlowScreen.tsx treats
+ * `unsetPastCutoff` the same as `unset`), only this button+message pair
+ * changes.
  *
  * Review fix (Fix 30): this sheet is now the app's ONLY entry point into
  * either flow — the old full-screen hero-card pair (`CheckInHeroChoices`,
@@ -46,7 +57,8 @@ export interface CheckInMenuSheetProps {
 export function CheckInMenuSheet({ open, onClose }: CheckInMenuSheetProps) {
   const navigate = useNavigate()
   const { intentions } = useDayLogStore()
-  const intentionState = deriveIntentionState(intentions)
+  const cutoffTime = getIntentionCutoffTime()
+  const intentionState = deriveIntentionState(intentions, new Date(), cutoffTime)
   const intentionConfig = INTENTION_STATE_CONFIG[intentionState]
   const IntentionIcon = intentionConfig.icon
 
@@ -68,17 +80,22 @@ export function CheckInMenuSheet({ open, onClose }: CheckInMenuSheetProps) {
         aria-label="Check in"
         className={`absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-[393px] flex-col gap-2 rounded-t-[24px] border border-solid border-black/10 bg-white px-5 pt-8 pb-10 shadow-[0px_-3px_24px_0px_rgba(0,0,0,0.12)] transition-transform duration-200 ${open ? 'translate-y-0' : 'translate-y-full'}`}
       >
-        <GradientActionButton
-          radius="md"
-          className="h-[52px]"
-          variant={intentionConfig.variant}
-          disabled={intentionConfig.disabled}
-          aria-disabled={!intentionConfig.tappable || intentionConfig.disabled}
-          icon={<IntentionIcon size={24} weight={intentionConfig.iconWeight} color={intentionConfig.variant === 'primary' ? 'white' : undefined} />}
-          onClick={intentionConfig.tappable ? () => goTo('/checkin/intention') : undefined}
-        >
-          {intentionConfig.label}
-        </GradientActionButton>
+        <div className="flex flex-col gap-1.5">
+          <GradientActionButton
+            radius="md"
+            className="h-[52px]"
+            variant={intentionConfig.variant}
+            disabled={intentionConfig.disabled}
+            aria-disabled={!intentionConfig.tappable || intentionConfig.disabled}
+            icon={<IntentionIcon size={24} weight={intentionConfig.iconWeight} color={intentionConfig.variant === 'primary' ? 'white' : undefined} />}
+            onClick={intentionConfig.tappable ? () => goTo('/checkin/intention') : undefined}
+          >
+            {intentionConfig.label}
+          </GradientActionButton>
+          {intentionState === 'unsetPastCutoff' && cutoffTime && (
+            <p className="px-1 font-sans text-sm text-ink/60">Setting intentions closed at {formatCutoffTime(cutoffTime)} today. Come back tomorrow.</p>
+          )}
+        </div>
         <GradientActionButton radius="md" className="h-[52px]" variant="secondary" icon={<Flower size={24} weight="fill" />} onClick={() => goTo('/checkin/mood')}>
           Check in mood
         </GradientActionButton>

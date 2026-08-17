@@ -169,16 +169,15 @@ export function MorningIntentionFlow() {
     return (
       <>
         <TaskFlowHeader title="Set today's intention" exit="close" onExit={() => navigate('/checkin')} />
-        {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
-        <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
-          {/*
-            gap-4 — the app's usual title-to-content spacing. Review fix:
-            was gap-9 (36px) to clear the slider's old floating knob, which
-            rendered 28px above its own track regardless of value; the
-            redesigned IntensitySlider has no knob (the current value now
-            shows via a fill + tall tick fully contained within the track's
-            own 57px height), so that extra clearance no longer applies.
-          */}
+        {/*
+          gap-4 — the app's usual title-to-content spacing. Review fix:
+          was gap-9 (36px) to clear the slider's old floating knob, which
+          rendered 28px above its own track regardless of value; the
+          redesigned IntensitySlider has no knob (the current value now
+          shows via a fill + tall tick fully contained within the track's
+          own 57px height), so that extra clearance no longer applies.
+        */}
+        <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
           <div className="flex flex-col gap-4">
             <p className="font-sans text-lg font-medium text-ink">Current energy level</p>
             <IntensitySlider
@@ -192,14 +191,24 @@ export function MorningIntentionFlow() {
               ariaLabel="Energy level"
             />
           </div>
+        </div>
 
-          <div className="flex-1" />
-          <div className="flex flex-col gap-2">
-            <IntentionProgressBar step="energy" hasSavedIntention />
-            <GradientActionButton disabled={!canComplete} onClick={handleComplete}>
-              Complete
-            </GradientActionButton>
-          </div>
+        {/*
+          Review fix: pulled out of the scrollable div above (was the last
+          child of a single `overflow-y-auto` flex column, pushed via a
+          `flex-1` spacer) into its own sibling — same fixed-bottom-bar
+          pattern as BottomNav.tsx (`sticky bottom-0`, in normal flex flow
+          as a shrink-0 sibling AFTER the scrollable region, not floated
+          over it), so it can never be scrolled past. This step's own
+          content is always short enough that the bug this fixes wasn't
+          reachable here, but kept consistent with the 'details' step below
+          rather than leaving two different layout idioms in the same flow.
+        */}
+        <div className="sticky bottom-0 flex shrink-0 flex-col gap-2 bg-white px-5 pt-4 pb-[max(32px,env(safe-area-inset-bottom))]">
+          <IntentionProgressBar step="energy" hasSavedIntention />
+          <GradientActionButton disabled={!canComplete} onClick={handleComplete}>
+            Complete
+          </GradientActionButton>
         </div>
       </>
     )
@@ -208,8 +217,22 @@ export function MorningIntentionFlow() {
   return (
     <>
       <TaskFlowHeader title="Set today's intention" exit="close" onExit={() => navigate('/checkin')} />
-      {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
-      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
+      {/*
+        Review fix: was one `overflow-y-auto` flex column holding BOTH this
+        content AND the progress-bar/button block below (that block pushed
+        to the bottom via a trailing `flex-1` spacer) — fine while short,
+        but once enough saved-intention cards made the combined content
+        taller than the viewport, the WHOLE column scrolled as one unit,
+        carrying the button down and out of view with it (reported bug:
+        button drifts further down as intentions are added, instead of
+        staying put). Split into two siblings instead — this div now only
+        holds the scrollable content, and the progress-bar/button block
+        below is its own fixed sibling — the same structural split
+        TabLayout.tsx already uses for BottomNav (scrollable content as a
+        `flex-1 overflow-y-auto` sibling, the fixed bar as a separate
+        `shrink-0` sibling after it), not a new positioning approach.
+      */}
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
@@ -246,7 +269,7 @@ export function MorningIntentionFlow() {
           {atMax ? (
             <div className="flex w-full flex-col gap-1 rounded-[12px] border border-solid border-[#eee2c9] bg-[#fef9ef] p-3">
               <p className="font-sans text-base font-medium text-[#614405]">You&apos;ve chosen enough for today</p>
-              <p className="font-sans text-base text-[#6a6458]">Let these {MAX_INTENTIONS_PER_DAY} intentions have your attention for now.</p>
+              <p className="font-sans text-base text-[#6a6458]">Let these {MAX_INTENTIONS_PER_DAY} intentions have your attention.</p>
             </div>
           ) : (
             <button
@@ -294,14 +317,14 @@ export function MorningIntentionFlow() {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="flex-1" />
-        <div className="flex flex-col gap-2">
-          <IntentionProgressBar step="details" hasSavedIntention={savedIntentions.length > 0} />
-          <GradientActionButton disabled={!canContinue} onClick={handleContinue}>
-            Continue
-          </GradientActionButton>
-        </div>
+      {/* Fixed bottom bar — see the doc comment on the scrollable div above for why this is now a separate sibling rather than the last item inside it. */}
+      <div className="sticky bottom-0 flex shrink-0 flex-col gap-2 bg-white px-5 pt-4 pb-[max(32px,env(safe-area-inset-bottom))]">
+        <IntentionProgressBar step="details" hasSavedIntention={savedIntentions.length > 0} />
+        <GradientActionButton disabled={!canContinue} onClick={handleContinue}>
+          Continue
+        </GradientActionButton>
       </div>
 
       <LifeAreaPickerSheet

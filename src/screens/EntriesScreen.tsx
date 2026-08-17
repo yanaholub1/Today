@@ -175,7 +175,7 @@ export function EntriesScreen() {
 
   return (
     <div className={cn('flex min-h-full flex-col', !isCompleteEmpty && 'pb-8')}>
-      <HomeHeader greeting={getGreeting(getDisplayName())} onSettingsClick={() => navigate('/settings')} onProfileClick={() => navigate('/profile')} />
+      <HomeHeader greeting={getGreeting(getDisplayName())} onProfileClick={() => navigate('/profile')} />
 
       <div className="flex flex-1 flex-col px-5">
         {/* self-start — the switcher should hug its own content width, not stretch to the row's full width the way a flex-column child does by default. */}

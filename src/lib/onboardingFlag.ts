@@ -30,3 +30,12 @@ export function markOnboardingComplete(): void {
     // onboarding on the next load, a reasonable degradation, not a crash.
   }
 }
+
+/** Explicit sign-out only (authStore.tsx) — since this flag, not real auth status, is what `RequireOnboarded`/`RootRoute` gate the whole app on, clearing it is what actually sends a signed-out user back to `/onboarding` rather than leaving them sitting in an app that just silently lost its data. */
+export function clearOnboardingComplete(): void {
+  try {
+    localStorage.removeItem(ONBOARDING_COMPLETE_KEY)
+  } catch {
+    // Ignore, same degradation as markOnboardingComplete above.
+  }
+}

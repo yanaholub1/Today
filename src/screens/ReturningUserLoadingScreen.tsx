@@ -37,11 +37,42 @@ const REVEAL_MS = 400 // matches OnboardingScreen's own SPLASH_LETTERS_MS, for a
  * `onDone`'s own navigate (unlike OnboardingScreen's plain `navigate` in
  * `handleGetStarted`) — this is a transient, once-per-session screen, not
  * something a back-button press should be able to land back on and replay.
+ *
+ * Review fix — `onDone` (optional) lets SignUpScreen.tsx/SignInScreen.tsx
+ * reuse this exact screen (same markup, same animation, same timing —
+ * nothing below changes for either caller) while a real registration/
+ * sign-in submission is in flight, instead of building a second loading
+ * screen. Two things change ONLY when a caller passes this:
+ * - Navigation is THEIRS, not this screen's own hardcoded `/checkin`:
+ *   this component has no way to know whether a submission it didn't
+ *   make actually succeeded, so it defers entirely to the caller —
+ *   who keeps rendering this screen for exactly as long as the real
+ *   result is still pending, and stops (unmounting it) once that
+ *   result is known, on success OR failure. A caller passes a no-op
+ *   here for that reason: the interesting moment isn't "this screen's
+ *   own animation finished," it's "the real network call resolved,"
+ *   which the caller already tracks separately.
+ * - The once-per-session shortcut (`firstLoadSplash.ts`) is skipped:
+ *   that flag exists because THIS route's own "work" (session restore +
+ *   an initial data fetch) is either already done or fast enough not to
+ *   matter on a mid-session revisit — replaying the animation there
+ *   would just be wasted time in front of work that's already finished.
+ *   A real pending submission has no such guarantee; skipping the wait
+ *   would mean navigating (or rather, telling the caller "done") before
+ *   knowing whether the request even succeeded. `skip` can still apply
+ *   for `prefers-reduced-motion` even when reused this way — that's an
+ *   orthogonal, always-relevant accessibility concern, not the
+ *   once-per-session one.
  */
-export function ReturningUserLoadingScreen() {
+export interface ReturningUserLoadingScreenProps {
+  onDone?: () => void
+}
+
+export function ReturningUserLoadingScreen({ onDone }: ReturningUserLoadingScreenProps = {}) {
   const navigate = useNavigate()
   const reducedMotion = usePrefersReducedMotion()
-  const [shouldPlay] = useState(() => peekFirstLoadSplashAvailable())
+  const isReuse = Boolean(onDone)
+  const [shouldPlay] = useState(() => isReuse || peekFirstLoadSplashAvailable())
   const skip = !shouldPlay || reducedMotion
 
   const [wordmarkVisible, setWordmarkVisible] = useState(skip)
@@ -55,8 +86,8 @@ export function ReturningUserLoadingScreen() {
   // ran `OnboardingScreen`'s own reset-on-unmount logic).
 
   useLayoutEffect(() => {
-    claimFirstLoadSplash()
-  }, [])
+    if (!isReuse) claimFirstLoadSplash()
+  }, [isReuse])
 
   const { circleRef, circleFillRef, showSplashCircle } = useSplashCollapse({
     active: !skip,
@@ -65,10 +96,10 @@ export function ReturningUserLoadingScreen() {
     centerYOffset: -27, // same offset OnboardingScreen's own giant circle uses — keeps the two splashes' opening beat visually consistent
     revealMs: REVEAL_MS,
     onReveal: () => setWordmarkVisible(true),
-    onDone: () => navigate('/checkin', { replace: true }),
+    onDone: onDone ?? (() => navigate('/checkin', { replace: true })),
   })
 
-  if (skip) return <Navigate to="/checkin" replace />
+  if (skip && !isReuse) return <Navigate to="/checkin" replace />
 
   return (
     <div

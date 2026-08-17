@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { EnvelopeSimpleOpen } from '@phosphor-icons/react'
 import { TaskFlowHeader } from '../components/TaskFlowHeader'
 import { TextInput } from '../components/TextInput'
 import { GradientActionButton } from '../components/GradientActionButton'
-import { FlowSuccessScreen } from '../components/FlowSuccessScreen'
 import { useAuth } from '../lib/authStore'
+import { useThemeColor } from '../lib/useThemeColor'
+import { ReturningUserLoadingScreen } from './ReturningUserLoadingScreen'
 
 // Matches Supabase's own default minimum — checked client-side so the
 // obvious case doesn't need a round-trip, with the server's own error
@@ -15,97 +15,78 @@ import { useAuth } from '../lib/authStore'
 const MIN_PASSWORD_LENGTH = 6
 
 /**
- * Sign-up (email + password + confirm password) — review fix: replaces
- * the old magic-link RegistrationScreen, split from SignInScreen.tsx now
- * that Supabase's own `signUp()`/`signInWithPassword()` genuinely need
- * separate handling (unlike OTP, where "sign up" and "sign in" were the
- * same request). OnboardingScreen's "Get started" routes here; "Sign in"
- * routes to SignInScreen.tsx instead.
+ * Create-an-account / continue-into-an-existing-one (name + email +
+ * password + confirm password) — review fix: this is now
+ * OnboardingScreen's own "Sign in" button destination (previously
+ * unhooked, previously built around `signUp()`, which would have created
+ * a brand-new account unrelated to whatever's already saved under this
+ * device's own anonymous session).
  *
- * Three non-error outcomes from `signUp()` (see authStore.tsx's own
- * `SignUpResult` doc comment for the full reasoning):
- * - already registered → inline message pointing at Sign In, no email
- *   sent. This is a genuine SUCCESS response from Supabase (deliberate
- *   anti-enumeration behavior — a real error here would let an attacker
- *   probe which emails have accounts), so it's checked for explicitly
- *   rather than caught in the `error` branch below.
- * - needs email confirmation → reuses `FlowSuccessScreen`'s "Check your
- *   email" template, same as the old magic-link flow used for the same
- *   UI. This is a DEFENSIVE fallback, not the expected path: the
- *   product decision for this app is "Confirm email" OFF (a Supabase
- *   dashboard setting, outside what this app's own code controls) — if
- *   this branch is ever actually reached, that setting is still on and
- *   needs to be flipped off in the dashboard for sign-up to work the
- *   way it's designed to here.
- * - signed in immediately (the expected/designed-for path) → nothing
- *   further to do here; `useAuth()`'s `status` flips to `'signedIn'` on
- *   its own via Supabase's own `onAuthStateChange`, and App.tsx's route
- *   guards redirect into the app — same mechanism every other sign-in
- *   path in this app already relies on.
+ * Now calls `authStore.tsx`'s `registerAccount(name, email, password)` —
+ * see that function's own doc comment for the full mechanics. Two
+ * successful outcomes, neither needing anything further here (no
+ * explicit navigation — `useAuth()`'s `status`/`isAnonymous` flip via
+ * Supabase's own `onAuthStateChange`, and App.tsx's `RedirectIfRegistered`,
+ * already wrapping this route, redirects into the app on its own, same
+ * mechanism every other sign-in path in this app already relies on):
+ * - the current anonymous session becomes a real, permanent account
+ *   (Case A) — same user id, so everything already saved on this device
+ *   is preserved automatically, no migration needed.
+ * - the chosen email already belongs to a different, existing account
+ *   (Case B) — `registerAccount` transparently signs into THAT account
+ *   using the same password just typed here, rather than dead-ending on
+ *   an "already registered" message the way the old `signUp()`-based
+ *   version did. Known, accepted limitation: today's anonymous-session
+ *   data on this device is NOT merged into that existing account (see
+ *   `registerAccount`'s own doc comment for why).
  *
- * "Confirm password" only ever exists client-side — Supabase's own
- * `signUp()` has no equivalent, so mismatch checking has to happen here
- * before the request is even sent.
+ * Any other failure (weak password, invalid email, or a wrong password
+ * on the Case B fallback login) surfaces as one plain error message —
+ * unlike the old version, there's no separate "needs email confirmation"
+ * state to handle: this project's "Confirm email" setting is off, so
+ * `registerAccount` never has a pending, not-yet-real session to wait on.
+ *
+ * Review fix — `submitting` now also swaps the whole screen for
+ * `ReturningUserLoadingScreen` (the same splash the app already shows a
+ * returning user while it loads), rather than just disabling the button
+ * and relabeling it "Creating account…": account creation is a real
+ * network round-trip, previously the only auth action in the app with no
+ * loading state of its own. `onDone={() => {}}` — deliberately a no-op,
+ * see that screen's own doc comment on its `onDone` prop — this screen
+ * stays in control of when to stop showing it (on error, back to the
+ * form below; on success, App.tsx's `RedirectIfRegistered` unmounts this
+ * whole screen once `status`/`isAnonymous` flip, same as it always has).
+ * `useThemeColor` mirrors the splash's own pink while it's showing, same
+ * hex `AuthLoadingScreen` already uses — otherwise the status bar/toolbar
+ * chrome would stay this screen's usual white underneath a pink splash.
  */
 export function SignUpScreen() {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  const { registerAccount } = useAuth()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [confirmTouched, setConfirmTouched] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
-  const [confirmationSent, setConfirmationSent] = useState(false)
 
-  const passwordsMatch = password === confirmPassword
+  useThemeColor(submitting && '#ffdcf5')
+
   const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH
-  const canSubmit = Boolean(email.trim()) && Boolean(password) && Boolean(confirmPassword) && passwordsMatch && !passwordTooShort && !submitting
+  const canSubmit = Boolean(name.trim()) && Boolean(email.trim()) && Boolean(password) && !passwordTooShort && !submitting
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!passwordsMatch) {
-      setConfirmTouched(true)
-      return
-    }
     setSubmitting(true)
     setError(null)
-    setAlreadyRegistered(false)
-    const result = await signUp(email.trim(), password)
-    setSubmitting(false)
+    const result = await registerAccount(name.trim(), email.trim(), password)
     if (result.error) {
+      setSubmitting(false)
       setError(result.error)
-      return
     }
-    if (result.alreadyRegistered) {
-      setAlreadyRegistered(true)
-      return
-    }
-    if (result.needsEmailConfirmation) {
-      setConfirmationSent(true)
-    }
-    // Neither flag set: signed in — App.tsx's own route guards take it from here.
+    // No error: signed in — either upgraded this device's anonymous session or signed into an existing account. App.tsx's own route guards take it from here; `submitting` stays true so the loading screen keeps showing until that unmount happens.
   }
 
-  // `h-dvh` (not `h-screen`) on both this branch's container and the main
-  // return's below, same home-indicator-clipping fix the old
-  // RegistrationScreen needed — see SignInScreen.tsx's own comment for
-  // the full reasoning, unchanged here.
-  if (confirmationSent) {
-    return (
-      <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
-        <FlowSuccessScreen
-          icon={<EnvelopeSimpleOpen size={108} weight="duotone" className="text-warm" />}
-          title="Check your email"
-          subtitle={`We sent a confirmation link to ${email.trim()}. Open it on this device to finish creating your account.`}
-          onClose={() => setConfirmationSent(false)}
-          onDone={() => setConfirmationSent(false)}
-          doneLabel="Use a different email"
-        />
-      </div>
-    )
-  }
+  if (submitting) return <ReturningUserLoadingScreen onDone={() => {}} />
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
@@ -113,10 +94,17 @@ export function SignUpScreen() {
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-2">
           <h1 className="font-serif text-2xl text-ink">Create your account</h1>
-          <p className="font-sans text-base text-ink/70">Enter your email and choose a password.</p>
+          <p className="font-sans text-base text-ink/70">Enter your name, email, and a password.</p>
         </div>
 
         <div className="mt-8 flex flex-col gap-2">
+          <label htmlFor="name" className="font-sans text-sm font-medium text-ink">
+            Name
+          </label>
+          <TextInput id="name" type="text" required autoComplete="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2">
           <label htmlFor="email" className="font-sans text-sm font-medium text-ink">
             Email
           </label>
@@ -127,20 +115,8 @@ export function SignUpScreen() {
             autoComplete="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setAlreadyRegistered(false)
-            }}
+            onChange={(e) => setEmail(e.target.value)}
           />
-          {alreadyRegistered && (
-            <p className="font-sans text-sm text-warm">
-              This email's already registered —{' '}
-              <button type="button" onClick={() => navigate('/sign-in')} className="focus-ring underline">
-                sign in instead
-              </button>
-              .
-            </p>
-          )}
         </div>
 
         <div className="mt-6 flex flex-col gap-2">
@@ -159,33 +135,19 @@ export function SignUpScreen() {
           {passwordTooShort && <p className="font-sans text-sm text-warm">Password must be at least {MIN_PASSWORD_LENGTH} characters.</p>}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2">
-          <label htmlFor="confirmPassword" className="font-sans text-sm font-medium text-ink">
-            Confirm password
-          </label>
-          <TextInput
-            id="confirmPassword"
-            type="password"
-            required
-            autoComplete="new-password"
-            placeholder="Re-enter your password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            onBlur={() => setConfirmTouched(true)}
-          />
-          {confirmTouched && !passwordsMatch && <p className="font-sans text-sm text-warm">Passwords don't match.</p>}
-        </div>
-
         {error && <p className="mt-4 font-sans text-sm text-warm">{error}</p>}
 
         <div className="flex-1" />
         <div className="flex flex-col gap-4">
           <GradientActionButton type="submit" disabled={!canSubmit}>
-            {submitting ? 'Creating account…' : 'Create account'}
+            Create account
           </GradientActionButton>
-          <button type="button" onClick={() => navigate('/sign-in')} className="focus-ring pressable font-sans text-lg font-semibold text-[#e90555]">
-            Already have an account? Sign in
-          </button>
+          <p className="text-center font-sans text-lg text-ink">
+            Already have an account?{' '}
+            <button type="button" onClick={() => navigate('/sign-in')} className="focus-ring pressable font-semibold text-[#e90555]">
+              Sign in
+            </button>
+          </p>
         </div>
       </form>
     </div>

@@ -202,9 +202,36 @@ function Tick({ isAccent, isPassed, isCurrent }: { isAccent: boolean; isPassed: 
  *
  * Tapping a label is a real interaction now, not decorative text —
  * explicit direct request, matching the drag/tap-on-track paths already
- * supported: each label is a full-height (40px), full-width-of-its-cell
- * button, deliberately sized well past its own text so the tap target is
- * generous, not just the glyph's own bounding box.
+ * supported: each label is a `h-10 min-w-10` button, deliberately sized
+ * past its own text so the tap target is generous, not just the glyph's
+ * own bounding box.
+ *
+ * Review fix — labels used to live in their own row below the track,
+ * spaced by `flex-1` (N equal cells) independent of the tick row above
+ * (spaced by `justify-between` over 9 marks that ALTERNATE width — 8px
+ * pills at the labeled positions, 6px dots between them, per
+ * `fillWidthForMark`'s own derivation above). Those two distributions
+ * only coincide at the two ends (mark 0 and the last mark both sit flush
+ * against the row's own edges regardless of how the marks between them
+ * are sized) — every label in between drifted from its own tick by a
+ * different amount depending on viewport width, worse specifically on
+ * the 5-segment mood slider (4 unevenly-spaced marks between the edges,
+ * vs. 3-segment's single evenly-centered middle mark, which happened to
+ * still land close to its own tick by symmetry alone).
+ *
+ * Fixed by deriving each label's position from the SAME cell as its own
+ * tick, not a second computation: each of the 9 mark slots in the loop
+ * below is now a `relative` wrapper holding both the `<Tick>` and (for a
+ * labeled slot) a `button` absolutely positioned (`left-1/2
+ * -translate-x-1/2`) under THAT wrapper specifically — so a label is
+ * always exactly centered on its own tick's real rendered position, at
+ * any track width, by construction rather than by two formulas
+ * happening to agree. `self-stretch` on the wrapper (not the row's own
+ * `items-center`) is what keeps each cell's own height pinned to the
+ * track's full 57px regardless of whether ITS tick is currently 20px or
+ * grown to 55px — without it, `top-full`'s 100% would be relative to the
+ * tick's own varying height instead of a fixed anchor, and the label
+ * would hop vertically as the current mark changes.
  */
 export function IntensitySlider({
   value,
@@ -313,33 +340,41 @@ export function IntensitySlider({
             const isAccent = config.accentMarkIndexes.includes(i)
             const isPassed = isActive && i <= currentMarkIndex
             const isCurrent = isActive && i === currentMarkIndex
-            return <Tick key={i} isAccent={isAccent} isPassed={isPassed} isCurrent={isCurrent} />
+            // -1 for a dot (no label); the label's own index into `labelList`
+            // for a pill, since `accentMarkIndexes` is already ordered to
+            // line up 1:1 with `labelList` (this file's own top comment).
+            const labelIndex = config.accentMarkIndexes.indexOf(i)
+            const label = labelIndex !== -1 ? labelList[labelIndex] : null
+            return (
+              // `self-stretch` (review fix, see doc comment below) — NOT the
+              // row's own `items-center` — is what keeps this cell's height
+              // fixed at the track's full 57px regardless of whether the
+              // Tick inside it is currently 20px or grown to 55px, so the
+              // label anchored to `top-full` below never shifts vertically
+              // as the current mark changes.
+              <div key={i} className="relative flex h-full shrink-0 items-center self-stretch">
+                <Tick isAccent={isAccent} isPassed={isPassed} isCurrent={isCurrent} />
+                {label !== null && (
+                  <button
+                    type="button"
+                    disabled={!active}
+                    onClick={() => handleLabelTap(labelIndex)}
+                    className={cn(
+                      'focus-ring pressable pointer-events-auto absolute top-full left-1/2 mt-1 flex h-10 min-w-10 -translate-x-1/2 items-center justify-center px-1 font-sans text-base whitespace-nowrap transition-colors duration-150',
+                      isActive && labelIndex === activeLabelIndex ? 'font-semibold text-slider-label-active' : 'font-normal text-slider-label-default',
+                    )}
+                  >
+                    {label}
+                  </button>
+                )}
+              </div>
+            )
           })}
         </div>
       </div>
 
-      <div className={cn('mt-1 flex h-10 w-full items-stretch font-sans text-base', config.labelPadding)}>
-        {labelList.map((label, i) => {
-          const isFirst = i === 0
-          const isLast = i === labelList.length - 1
-          const isLabelActive = isActive && i === activeLabelIndex
-          return (
-            <button
-              key={label + i}
-              type="button"
-              disabled={!active}
-              onClick={() => handleLabelTap(i)}
-              className={cn(
-                'focus-ring pressable flex h-full flex-1 items-center transition-colors duration-150',
-                isFirst ? 'justify-start text-left' : isLast ? 'justify-end text-right' : 'justify-center text-center',
-                isLabelActive ? 'font-semibold text-slider-label-active' : 'font-normal text-slider-label-default',
-              )}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Reserves the labels' own footprint (mt-1's 4px + h-10's 40px, matching those exact values above) in normal document flow — the labels themselves no longer occupy any (they're `absolute`, anchored to the tick row above), so without this a trailing rangeCaption row, or anything a caller places after this whole component, would sit up under the numbers instead of below them. */}
+      <div className="h-11" aria-hidden="true" />
 
       {config.rangeCaption && (
         <div className={cn('mt-2 flex items-center justify-between font-sans text-[13px] text-slider-label-default', config.labelPadding)}>

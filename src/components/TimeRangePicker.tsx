@@ -65,7 +65,7 @@ export function TimeRangePicker({ value, onChange, className }: TimeRangePickerP
                     setOpen(false)
                   }}
                   className={cn(
-                    'px-4 py-3 text-left font-sans text-base whitespace-nowrap',
+                    'focus-ring pressable px-4 py-3 text-left font-sans text-base whitespace-nowrap',
                     selected ? 'bg-sphere-pale-bg font-medium text-[#6d0e2d]' : 'text-ink',
                   )}
                 >

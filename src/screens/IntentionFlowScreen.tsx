@@ -34,7 +34,14 @@ export function IntentionFlowScreen() {
   const { intentions } = useDayLogStore()
   const [state] = useState(() => deriveIntentionState(intentions))
 
-  if (state === 'unset') return <MorningIntentionFlow />
+  // unsetPastCutoff still renders the morning flow, same as unset — the
+  // cutoff only disables the CheckInMenuSheet entry POINT (see that
+  // component's own doc comment), not the flow itself. Someone who
+  // reaches this route directly (a stale link, or the sheet was already
+  // open when the cutoff ticked over) can still finish setting an
+  // intention, matching the explicit "disabled, not fully blocked
+  // outside that check" requirement.
+  if (state === 'unset' || state === 'unsetPastCutoff') return <MorningIntentionFlow />
   if (state === 'eveningUnreflected') return <EveningReflectionFlow />
   return <Navigate to="/checkin" replace />
 }

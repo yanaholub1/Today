@@ -16,7 +16,7 @@ interface MinimalSpeechRecognition extends EventTarget {
   stop: () => void
   onresult: ((event: { resultIndex: number; results: { length: number; [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
   onend: (() => void) | null
-  onerror: (() => void) | null
+  onerror: ((event: { error: string }) => void) | null
 }
 
 type SpeechRecognitionConstructor = new () => MinimalSpeechRecognition
@@ -48,20 +48,49 @@ export interface NotesFieldProps {
  * message ... and the app should transcribe," flagged as inferred
  * placement since the node itself shows no icon.
  *
- * Voice input uses the browser's native SpeechRecognition API (Chrome/Edge;
- * `webkitSpeechRecognition` fallback for older Chromium) — the only way to
- * get REAL speech-to-text transcription in a frontend-only app with no
- * backend/AI service to call. Not polyfilled or faked: on unsupported
- * browsers (Safari, Firefox) the mic button simply doesn't render, rather
- * than showing a control that would silently do nothing — typing remains
- * the only input there. `interimResults: false` — only finalized phrases
- * get appended to the note, avoiding the flicker of a live partial
- * transcript being rewritten mid-sentence. Each finalized chunk is
- * appended to whatever's already in the field (not overwritten), so typing
- * and recording can be mixed freely in one note.
+ * Voice input uses the browser's native SpeechRecognition API (Chrome/Edge
+ * unprefixed; `webkitSpeechRecognition` for Safari, including iOS 14.5+ —
+ * review fix, the doc comment here used to claim Safari doesn't support
+ * this at all and the button hides there, which isn't accurate: Safari
+ * has shipped the webkit-prefixed API for years, so `Ctor` above resolves
+ * truthy there too and the button DOES render) — the only way to get REAL
+ * speech-to-text transcription in a frontend-only app with no backend/AI
+ * service to call. Genuinely unsupported browsers (older Firefox) still
+ * hide the button entirely rather than showing a control that would
+ * silently do nothing — typing remains the only input there.
+ *
+ * Review fix — `continuous` is now `false` (was `true`). Two reasons:
+ * (1) this now matches the actual brief ("when the user finishes
+ * speaking... the transcribed text is inserted" — recognition should
+ * detect end-of-speech on its own, not require an explicit stop tap for
+ * every use); (2) `continuous: true` has a longstanding, well-documented
+ * WebKit bug specifically on iPhone/iPad — recognition never stops on its
+ * own and no text is ever returned, i.e. exactly "tapping the mic does
+ * nothing." Tapping the mic again while `recording` still works as an
+ * explicit early-stop (`stopRecording` below, unchanged) for a longer
+ * thought; `interimResults` stays `false`, unaffected by this — its own
+ * WebKit bug (never-finalizing results) is specific to the
+ * `continuous`+`interimResults` combination, which no longer applies.
+ *
+ * Review fix — `onerror` used to just reset `recording` with NO visible
+ * feedback: confirmed live (mic permission blocked) that this reads as a
+ * complete no-op from the outside — the icon quietly reverts to idle,
+ * nothing in the note, nothing in the console. `error` below now shows a
+ * short, specific message for the case actually likely to be hit in
+ * practice (permission denied/blocked) and a generic fallback otherwise,
+ * matching this app's existing small `text-warm` inline-error convention
+ * (SignInScreen.tsx et al.) rather than inventing new error styling.
+ * Cleared at the start of every new attempt, not just on success, so a
+ * retry doesn't leave a stale message showing underneath a fresh
+ * recording.
+ *
+ * Each finalized transcript is appended to whatever's already in the
+ * field (not overwritten), so typing and recording can be mixed freely
+ * in one note.
  */
 export function NotesField({ value, onChange, className }: NotesFieldProps) {
   const [recording, setRecording] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null)
   const Ctor = getSpeechRecognitionCtor()
 
@@ -71,8 +100,9 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
 
   const startRecording = () => {
     if (!Ctor) return
+    setError(null)
     const recognition = new Ctor()
-    recognition.continuous = true
+    recognition.continuous = false
     recognition.interimResults = false
     recognition.lang = 'en-US'
     recognition.onresult = (event) => {
@@ -84,7 +114,16 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
       if (transcript) onChange(value ? `${value} ${transcript}` : transcript)
     }
     recognition.onend = () => setRecording(false)
-    recognition.onerror = () => setRecording(false)
+    recognition.onerror = (event) => {
+      setRecording(false)
+      setError(
+        event.error === 'not-allowed' || event.error === 'service-not-allowed'
+          ? 'Microphone access is blocked. Check your browser settings and try again.'
+          : event.error === 'no-speech'
+            ? "Didn't catch that — try again."
+            : 'Voice input failed. Please try again or type instead.',
+      )
+    }
     recognition.start()
     recognitionRef.current = recognition
     setRecording(true)
@@ -117,6 +156,7 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
           </button>
         )}
       </div>
+      {error && <p className="font-sans text-sm text-warm">{error}</p>}
     </div>
   )
 }

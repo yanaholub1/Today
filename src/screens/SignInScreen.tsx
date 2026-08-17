@@ -5,20 +5,28 @@ import { TaskFlowHeader } from '../components/TaskFlowHeader'
 import { TextInput } from '../components/TextInput'
 import { GradientActionButton } from '../components/GradientActionButton'
 import { useAuth } from '../lib/authStore'
+import { useThemeColor } from '../lib/useThemeColor'
+import { ReturningUserLoadingScreen } from './ReturningUserLoadingScreen'
 
 /**
  * Sign-in (email + password) — review fix: split from the old magic-link
  * RegistrationScreen once Supabase's own `signInWithPassword()` needed
  * separate handling from `signUp()` (unlike OTP, where "sign up" and
- * "sign in" were the same request). OnboardingScreen's "Sign in" link
- * routes here; "Get started" routes to SignUpScreen.tsx instead — see
- * that file's own doc comment for the sign-up side of this split.
+ * "sign in" were the same request).
+ *
+ * Review fix: no longer OnboardingScreen's own "Sign in" destination —
+ * that button now routes to `/sign-up` instead (see SignUpScreen.tsx's
+ * own doc comment for why: it's become the one general "create an
+ * account or continue into an existing one" form). This screen is now a
+ * plain, manual returning-user login — reachable by direct URL, and from
+ * SignUpScreen's own "Already have an account?" row.
  *
  * Two error states Supabase distinguishes server-side:
  * - "Invalid login credentials" — wrong password OR unknown email,
  *   deliberately the SAME generic message for both (anti-enumeration,
  *   same reasoning as SignUpScreen's own already-registered check) —
- *   surfaced as-is rather than guessing which one's actually wrong.
+ *   translated to friendlier copy by authStore.tsx's own
+ *   `friendlyAuthError` rather than guessing which one's actually wrong.
  * - "Email not confirmed" — a real account that hasn't clicked its
  *   confirmation link yet (only reachable if "Confirm email" is on —
  *   see SignUpScreen.tsx's own doc comment on that setting, currently
@@ -29,6 +37,14 @@ import { useAuth } from '../lib/authStore'
  * to `'signedIn'` via Supabase's own `onAuthStateChange`, and App.tsx's
  * route guards (`RequireRegistration`/`RootRoute`) redirect into the app
  * on their own — same mechanism every other sign-in path already uses.
+ *
+ * Review fix — `submitting` now also swaps the whole screen for
+ * `ReturningUserLoadingScreen` (the same splash the app already shows a
+ * returning user while it loads) instead of just disabling the button
+ * and relabeling it "Signing in…" — see SignUpScreen.tsx's own doc
+ * comment on the identical pattern there (`onDone={() => {}}`,
+ * `useThemeColor` mirroring the splash's pink) for the full reasoning;
+ * not repeated here.
  */
 export function SignInScreen() {
   const navigate = useNavigate()
@@ -38,17 +54,21 @@ export function SignInScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useThemeColor(submitting && '#ffdcf5')
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
     const { error } = await signInWithPassword(email.trim(), password)
-    setSubmitting(false)
     if (error) {
+      setSubmitting(false)
       setError(error)
     }
-    // No error: signed in — App.tsx's own route guards take it from here.
+    // No error: signed in — App.tsx's own route guards take it from here; `submitting` stays true so the loading screen keeps showing until that unmount happens.
   }
+
+  if (submitting) return <ReturningUserLoadingScreen onDone={() => {}} />
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
@@ -102,11 +122,14 @@ export function SignInScreen() {
         <div className="flex-1" />
         <div className="flex flex-col gap-4">
           <GradientActionButton type="submit" disabled={!email.trim() || !password || submitting}>
-            {submitting ? 'Signing in…' : 'Sign in'}
+            Sign in
           </GradientActionButton>
-          <button type="button" onClick={() => navigate('/sign-up')} className="focus-ring pressable font-sans text-lg font-semibold text-[#e90555]">
-            Don't have an account? Sign up
-          </button>
+          <p className="text-center font-sans text-lg text-ink">
+            Don't have an account?{' '}
+            <button type="button" onClick={() => navigate('/sign-up')} className="focus-ring pressable font-semibold text-[#e90555]">
+              Sign up
+            </button>
+          </p>
         </div>
       </form>
     </div>

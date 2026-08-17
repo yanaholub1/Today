@@ -12,7 +12,6 @@ import { SignInScreen } from './screens/SignInScreen'
 import { CheckInScreen } from './screens/CheckInScreen'
 import { EntriesScreen } from './screens/EntriesScreen'
 import { PatternsScreen } from './screens/PatternsScreen'
-import { SettingsScreen } from './screens/SettingsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { IntentionFlowScreen } from './screens/IntentionFlowScreen'
 import { MoodFlowScreen } from './screens/MoodFlowScreen'
@@ -87,7 +86,7 @@ function AuthLoadingScreen() {
   const [showCircle] = useState(() => pink || peekFirstLoadSplashAvailable())
   useThemeColor(pink && '#ffdcf5')
   return (
-    <div className="relative mx-auto h-screen w-full max-w-[393px]" style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}>
+    <div className="relative mx-auto h-dvh w-full max-w-[393px]" style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}>
       {showCircle && (
         // `fixed`, not `absolute` — on a viewport wider than this app's own
         // 393px column (e.g. desktop, testing in a browser window), an
@@ -186,7 +185,7 @@ function RootRoute() {
 /**
  * Route guard for every screen that requires onboarding to be complete —
  * Check-in, Journal, Patterns, both task flows, the day-detail view,
- * settings, profile. Wraps the `TabLayout`/`FlowLayout` route groups as a
+ * profile. Wraps the `TabLayout`/`FlowLayout` route groups as a
  * single outer layout route (no path of its own) rather than gating each
  * leaf route individually, so a new gated route added later just needs
  * to sit inside one of those two groups to be covered automatically.
@@ -203,27 +202,53 @@ function RootRoute() {
  * while this is the active flow (every write in `dayLogStore.tsx` already
  * early-returns on a `null` userId) — expected while auth is paused, not
  * a bug, but worth knowing if something looks like it "didn't save."
+ *
+ * Review fix — root cause of "Log out doesn't do anything" (part 2, see
+ * authStore.tsx's own `signOut` doc comment for part 1): this component
+ * used to call no hooks at all, so it never subscribed to `AuthContext`.
+ * `AuthProvider`'s `children` prop is the exact same element reference on
+ * every one of ITS OWN re-renders (created once, in `App` below, which
+ * itself never re-renders) — React bails out of re-rendering an unchanged
+ * `children` reference unless something along the way independently
+ * subscribes to changed state, so without a subscription here, clearing
+ * `today:onboardingComplete` inside `signOut` had nothing to trigger this
+ * component into ever re-reading it: it just silently sat on whatever
+ * screen it was already showing. The `useAuth()` call below exists PURELY
+ * to subscribe to that context (its own return value is intentionally
+ * unused) — `AuthProvider`'s value object is a new reference on every one
+ * of its renders, so this forces a fresh `hasCompletedOnboarding()` read
+ * every time auth state changes for any reason, sign-out included. The
+ * actual gating decision is unchanged — still 100% flag-driven, not
+ * auth-status-driven — this only fixes when that flag gets re-checked.
  */
 function RequireOnboarded() {
+  useAuth()
   if (!hasCompletedOnboarding()) return <Navigate to="/onboarding" replace />
   return <Outlet />
 }
 
 /**
- * Inverse guard for the DORMANT `/sign-up`/`/sign-in` routes — unchanged
- * from before this file's onboarding-flag review fix (see `RootRoute`'s
- * own doc comment): still real, async `useAuth()` status, still exactly
- * what it did when these were the primary entry path. `/onboarding`
- * itself no longer uses this — see `RedirectIfOnboarded` below, its
- * flag-based counterpart — since sign-up/sign-in are reached only if
- * someone navigates there directly (nothing in the primary flow links to
- * them anymore); if auth is ever turned back into the primary flow, this
- * guard doesn't need to change, only what wraps it.
+ * Guard for `/sign-up`/`/sign-in` — no longer dormant: `/sign-up` is now
+ * OnboardingScreen's own "Sign in" button destination (see that screen's
+ * doc comment), so this guard is live traffic again, not just a
+ * direct-URL escape hatch.
+ *
+ * Review fix — was `status === 'signedIn'` alone. That broke the moment
+ * every device started getting a silent anonymous session on load
+ * (`authStore.tsx`'s own `signInAnonymously()` fallback): `status` flips
+ * to `'signedIn'` for ANY session, anonymous or real, so this guard was
+ * bouncing every visitor straight back to `/checkin` before they could
+ * ever see the form — `/sign-up`/`/sign-in` were unreachable in practice,
+ * confirmed by reading this file, not assumed. Now also checks
+ * `!isAnonymous` (authStore.tsx's own new field, derived from the
+ * session's `is_anonymous` claim) — only a GENUINE, permanent account
+ * redirects away; an anonymous-only session is exactly the state this
+ * screen exists to upgrade out of, so it must still render the form.
  */
 function RedirectIfRegistered({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
+  const { status, isAnonymous } = useAuth()
   if (status === 'loading') return <AuthLoadingScreen />
-  return status === 'signedIn' ? <Navigate to="/checkin" replace /> : <>{children}</>
+  return status === 'signedIn' && !isAnonymous ? <Navigate to="/checkin" replace /> : <>{children}</>
 }
 
 /**
@@ -269,17 +294,17 @@ function App() {
             }
           />
           {/*
-            DORMANT (review fix): real Supabase email/password auth,
-            unhooked from the primary entry flow rather than deleted —
-            see RootRoute's own doc comment for why, and note the
-            resulting gap: nothing in the primary flow links here
-            anymore, and a successful sign-in/sign-up no longer
-            auto-navigates anywhere on its own, since the routing that
-            used to do that (watching real auth `status`) has been
-            replaced by the onboarding flag for the primary flow. Still
-            fully reachable by URL, still real Supabase calls, still
-            gated by RedirectIfRegistered exactly as before — untouched,
-            just not part of any button's own navigation anymore.
+            Review fix: `/sign-up` is no longer dormant — it's
+            OnboardingScreen's own "Sign in" button destination, the ONE
+            general "create an account or continue into an existing one"
+            screen (see SignUpScreen.tsx's own doc comment for how it
+            handles both). `/sign-in` stays a manual, direct-URL-only
+            escape hatch (also linked from SignUpScreen's own "Already
+            have an account?" row) for a plain returning-user login.
+            Both real Supabase calls, both gated by RedirectIfRegistered
+            — see that guard's own doc comment for the fix that makes
+            them reachable again despite every device now carrying a
+            silent anonymous session.
           */}
           <Route
             path="/sign-up"
@@ -310,12 +335,11 @@ function App() {
               <Route path="/patterns" element={<PatternsScreen />} />
             </Route>
 
-            {/* Full-screen task flows + settings — no tab bar for the duration. */}
+            {/* Full-screen task flows + profile — no tab bar for the duration. */}
             <Route element={<FlowLayout />}>
               <Route path="/checkin/intention" element={<IntentionFlowScreen />} />
               <Route path="/checkin/mood" element={<MoodFlowScreen />} />
               <Route path="/day" element={<DayDetailScreen />} />
-              <Route path="/settings" element={<SettingsScreen />} />
               <Route path="/profile" element={<ProfileScreen />} />
             </Route>
           </Route>

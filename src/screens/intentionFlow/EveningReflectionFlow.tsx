@@ -166,8 +166,20 @@ export function EveningReflectionFlow() {
         exit="close"
         onExit={() => navigate('/checkin')}
       />
-      {/* pb-[max(32px,env(safe-area-inset-bottom))]: review fix, same class of bug as RegistrationScreen/FlowSuccessScreen — old flat pb-8 predates viewport-fit=cover going global; max() keeps the original 32px as the floor on non-notched devices. */}
-      <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
+      {/*
+        Review fix: was one `overflow-y-auto` flex column holding BOTH this
+        content AND the progress-bar/button block below (pushed down via a
+        trailing `flex-1` spacer) — same bug already fixed in
+        MorningIntentionFlow.tsx (see that file's own doc comment): once a
+        long reflection note made the combined content taller than the
+        viewport, the whole column scrolled as one unit, carrying the
+        button down with it instead of staying pinned. Split into two
+        siblings instead — this div now only holds the scrollable content,
+        and the progress-bar/button block below is its own fixed sibling,
+        the same structural split TabLayout.tsx already uses for
+        BottomNav.
+      */}
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
         <div className="flex flex-col gap-3">
           <p className="font-sans text-base font-medium text-ink">Glad about how this went?</p>
           <div className="flex w-full flex-col gap-2 rounded-[12px] border border-solid border-[#eddde6] p-3">
@@ -230,20 +242,20 @@ export function EveningReflectionFlow() {
         )}
 
         {draft.glad !== null && <NotesField value={draft.note} onChange={(value) => updateDraft({ note: value })} className="mt-6" />}
+      </div>
 
-        <div className="flex-1" />
-        <div className="flex flex-col gap-2">
-          {intentions.length > 1 && (
-            <div className="flex h-1 w-full gap-1" aria-label={`Intention ${cardIndex + 1} of ${intentions.length}`}>
-              {intentions.map((_, i) => (
-                <div key={i} className="h-1 flex-1 rounded-pill" style={{ backgroundColor: i < cardIndex ? PROGRESS_FILLED : PROGRESS_UNFILLED }} />
-              ))}
-            </div>
-          )}
-          <GradientActionButton disabled={!canProceed} onClick={handleAction}>
-            {isLastCard ? 'Complete' : 'Continue'}
-          </GradientActionButton>
-        </div>
+      {/* Fixed bottom bar — see the doc comment on the scrollable div above for why this is now a separate sibling rather than the last item inside it. */}
+      <div className="sticky bottom-0 flex shrink-0 flex-col gap-2 bg-white px-5 pt-4 pb-[max(32px,env(safe-area-inset-bottom))]">
+        {intentions.length > 1 && (
+          <div className="flex h-1 w-full gap-1" aria-label={`Intention ${cardIndex + 1} of ${intentions.length}`}>
+            {intentions.map((_, i) => (
+              <div key={i} className="h-1 flex-1 rounded-pill" style={{ backgroundColor: i < cardIndex ? PROGRESS_FILLED : PROGRESS_UNFILLED }} />
+            ))}
+          </div>
+        )}
+        <GradientActionButton disabled={!canProceed} onClick={handleAction}>
+          {isLastCard ? 'Complete' : 'Continue'}
+        </GradientActionButton>
       </div>
 
       {draft.glad !== null && (

@@ -290,9 +290,9 @@ export function MoodFlowScreen() {
                 }}
               />
               <div className="flex w-full items-center gap-3">
-                <div className="h-px flex-1 bg-ink/15" />
+                <div className="h-px flex-1 bg-[#eddde6]" />
                 <p className="font-sans text-base font-medium text-ink/60">Or</p>
-                <div className="h-px flex-1 bg-ink/15" />
+                <div className="h-px flex-1 bg-[#eddde6]" />
               </div>
               <div className="focus-ring-field-shape flex h-14 w-full shrink-0 items-center gap-2 rounded-pill border border-solid border-[#6d6b7c]/60 bg-white px-4">
                 <MagnifyingGlass size={24} className="shrink-0 text-ink/70" />
@@ -338,7 +338,7 @@ export function MoodFlowScreen() {
             />
             <NotesField value={note} onChange={setNote} className="mt-8" />
             <div className="flex-1" />
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               <GradientActionButton disabled={!intensityTouched} onClick={goNext}>
                 What might help?
               </GradientActionButton>
@@ -367,7 +367,7 @@ export function MoodFlowScreen() {
               ))}
             </div>
             <div className="flex-1" />
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               <GradientActionButton disabled={!techniqueId} onClick={() => setFeelBetterOpen(true)}>
                 Practice completed
               </GradientActionButton>

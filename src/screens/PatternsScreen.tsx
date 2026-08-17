@@ -91,7 +91,7 @@ function EmptyState() {
  * `subtab === 'mood'` branch below.
  *
  * No `HomeHeader` on this screen (review fix — explicit direct request,
- * the greeting/settings/profile row doesn't belong on Patterns); this
+ * the greeting/profile row doesn't belong on Patterns); this
  * screen's own content wrapper below carries its own top inset instead,
  * so "Patterns" doesn't sit flush against the very top edge. Review fix:
  * that inset is now `pt-[max(16px,env(safe-area-inset-top))]` (was a flat
@@ -280,7 +280,7 @@ export function PatternsScreen() {
         <div className="sticky top-0 z-20 mt-3 flex flex-col items-start gap-3 bg-white pt-3 pb-2">
           <PillSubtabSwitcher items={SUBTABS} activeId={subtab} onChange={setSubtab} />
 
-          <div className="flex w-full items-center gap-10 border-b border-solid border-black/10">
+          <div className="flex w-full items-center gap-10 border-b border-solid border-[#eddde6]">
             <TimeRangePicker value={range} onChange={setRange} className="shrink-0" />
             <div className="relative min-w-0 flex-1 overflow-hidden">
               {/*

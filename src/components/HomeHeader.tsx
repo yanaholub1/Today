@@ -1,9 +1,8 @@
-import { Gear, User } from '@phosphor-icons/react'
+import { User } from '@phosphor-icons/react'
 import { IconTapTarget } from './IconTapTarget'
 
 export interface HomeHeaderProps {
   greeting: string
-  onSettingsClick?: () => void
   onProfileClick?: () => void
 }
 
@@ -19,20 +18,19 @@ export interface HomeHeaderProps {
  * header sitting directly on the plain white page background with no
  * background, radius, or shadow of its own at all.
  *
- * Settings/profile buttons reuse IconTapTarget (with `weight="fill"`):
- * neither has a background/border/shadow class in the Figma export,
- * confirming the flat icon-button style here, not GradientCircleButton's
- * gradient/sheen treatment from Fix 13 — filled just refers to the icon
- * glyph itself, not the button surface.
+ * Profile button reuses IconTapTarget (with `weight="fill"`): no
+ * background/border/shadow class in the Figma export, confirming the flat
+ * icon-button style here, not GradientCircleButton's gradient/sheen
+ * treatment from Fix 13 — filled just refers to the icon glyph itself, not
+ * the button surface. Diffing this node's raw SVG path against
+ * @phosphor-icons/react's source confirms an exact match to Phosphor's
+ * `User` "fill" weight.
  *
- * The settings icon is Phosphor's `Gear` — an earlier pass here swapped it
- * for `GearSix` on the assumption that the Figma layer's OUTER wrapper
- * name ("GearSix") named the actual icon; zooming into the icon's own
- * node (117:5752) instead shows its real inner layer is named "Gear", and
- * diffing that node's raw SVG path against @phosphor-icons/react's source
- * confirms an exact match to Phosphor's `Gear` "fill" weight (not
- * `GearSix`). Same diffing approach confirmed `User`'s path also matches
- * Phosphor's stock "fill" weight exactly.
+ * Review fix — the separate Settings icon/button (previously `Gear`,
+ * beside this one) is gone: Settings as its own screen was consolidated
+ * into Profile (see ProfileScreen.tsx's own doc comment) now that there
+ * were too few settings items to justify a second destination — Profile
+ * is the app's one remaining account/preferences entry point.
  *
  * `greeting` is the full string (time-based text + name, e.g. "Good
  * morning, Yana") built by the caller — this component just renders it,
@@ -63,13 +61,12 @@ export interface HomeHeaderProps {
  * so Home/Journal (this header's only two callers) now open at the same
  * top position the flows already use.
  */
-export function HomeHeader({ greeting, onSettingsClick, onProfileClick }: HomeHeaderProps) {
+export function HomeHeader({ greeting, onProfileClick }: HomeHeaderProps) {
   return (
     <div className="flex items-center justify-between px-5 pt-[max(16px,env(safe-area-inset-top))]">
       {/* text-[20px] — explicit direct correction, was 18px (117:5748's own size). */}
       <p className="font-serif text-[20px] tracking-[-0.18px] text-ink">{greeting}</p>
       <div className="flex items-center gap-2">
-        <IconTapTarget icon={Gear} weight="fill" aria-label="Settings" onClick={onSettingsClick} />
         <IconTapTarget icon={User} weight="fill" aria-label="Profile" onClick={onProfileClick} />
       </div>
     </div>

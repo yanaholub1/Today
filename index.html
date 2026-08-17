@@ -4,11 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Today</title>
-    <!-- App icon (review fix) — generated from the project's Icon.png (3072x3072 source, already opaque so no background compositing needed). No favicon.ico: this scaffold never had one and modern browsers read the PNG link tags directly, so skipping it avoids pulling in an image-conversion dependency for one legacy format. -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- App icon (review fix) — generated from the project's Icon.png (3072x3072 source, already opaque so no background compositing needed). No favicon.ico: this scaffold never had one and modern browsers read the PNG link tags directly, so skipping it avoids pulling in an image-conversion dependency for one legacy format.
+
+         Review fix — `?v=2` cache-busting query param on every icon URL below (and on site.webmanifest's own icon entries): files under public/ are served at a fixed, unhashed path by design (Vite never renames them the way it does for imported assets), so when Icon.png's own content changes but these filenames don't, nothing forces a client that already fetched the old bytes at this exact URL to fetch again. This is what was actually happening — iOS Safari's own apple-touch-icon cache is especially aggressive about this, holding onto whatever it fetched for a URL for a long time, closer to "remembered per domain" than "normal HTTP cache-header-governed." Bumping this number (v2, v3, ...) is now the deliberate signal to re-fetch, any time the icon changes again — the files themselves don't need renaming. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+    <link rel="manifest" href="/site.webmanifest?v=2" />
     <!--
       Review fix: was a static `#ffffff` — correct for every OTHER screen
       (all plain white), but this default is what's active during the

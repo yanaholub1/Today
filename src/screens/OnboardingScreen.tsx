@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { GradientActionButton } from '../components/GradientActionButton'
 import { AppWordmark } from '../components/AppWordmark'
 import { cn } from '../lib/cn'
 import { useSplashCollapse } from '../lib/useSplashCollapse'
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import { ONBOARDING_SPLASH_GRADIENT } from '../lib/splashGradients'
-import { markOnboardingComplete } from '../lib/onboardingFlag'
+import { useAuth } from '../lib/authStore'
 import noticeIcon from '../assets/OnboardingNotice.png'
 import connectIcon from '../assets/OnboardingConnect.png'
 import patternsIcon from '../assets/OnboardingPatterns.png'
@@ -61,23 +61,34 @@ const SPLASH_LETTERS_MS = 400
  * already confirmed for MorningIntentionFlow/MoodFlowScreen, so this is
  * pure reuse, not a new button.
  *
- * "Get started" goes straight into the app now, no auth step (review
- * fix — auth PAUSED, not removed): Supabase's email-sending rate limit
- * was blocking testing of the real signUp()/signInWithPassword() flow
- * (SignUpScreen.tsx/SignInScreen.tsx, both still fully intact), so entry
- * is decided by a local "has this device completed onboarding before"
- * flag instead (`onboardingFlag.ts`) — see App.tsx's own `RootRoute` doc
- * comment for the full reasoning. `handleGetStarted` below claims that
- * flag then navigates straight to `/checkin`.
+ * Review fix — "Get started" no longer drops the user straight into the
+ * app anonymously: a logged-out visitor here could be genuinely new, OR a
+ * previously-registered user who just logged out — there's no way to tell
+ * those apart, so silently letting either one browse anonymously meant a
+ * returning user could easily end up on a SECOND, unrelated anonymous
+ * account instead of signing back into their real one. "Get started" now
+ * routes to `/sign-up` (`SignUpScreen.tsx`) — the one general "create an
+ * account or continue into an existing one" form (name + email +
+ * password; upgrades the current anonymous session in place for a
+ * genuinely new user, or transparently signs into the existing account if
+ * that email's already registered — see that screen's own doc comment).
+ * That fallback is exactly what makes routing BOTH cases through the same
+ * button safe, without needing to ask up front which one this is.
+ * `markOnboardingComplete()` is no longer called here either (review
+ * fix, was called immediately on tap, before any real account existed) —
+ * `authStore.tsx`'s `syncSession` already calls it the moment a REAL
+ * (non-anonymous) session actually exists, which is the correct trigger
+ * now that this button no longer means "start browsing anonymously": a
+ * visitor who backs out of the form without finishing still sees
+ * Onboarding again next time, rather than being silently treated as
+ * done.
  *
- * Review fix: the "Sign in" link is now REMOVED from this screen (was
- * previously left in place, unchanged, routing to `/sign-in`) — there's no
- * registration flow left for it to lead into. `/sign-in`, `SignInScreen.tsx`,
- * and `authStore.tsx`'s `signInWithPassword` remain fully intact and
- * dormant, same "paused not deleted" treatment as the rest of the auth
- * system (see this file's own note above on "Get started" skipping auth
- * entirely) — only this screen's own visible entry point into it is gone,
- * `/sign-in` is still reachable by direct URL.
+ * "Sign in" now genuinely routes to `/sign-in` (`SignInScreen.tsx`, plain
+ * email + password login) — review fix, was routed to `/sign-up`
+ * (mislabeled, a leftover from when "Get started" itself was the
+ * anonymous-only path and this button was the app's only real-auth entry
+ * point). With "Get started" now owning `/sign-up`, "Sign in" is free to
+ * mean what its label says.
  *
  * Layout is adapted from the mock's absolute positioning (a fixed 842px
  * iPhone frame) into a flexible column: wordmark pinned near the top,
@@ -155,7 +166,24 @@ const SPLASH_LETTERS_MS = 400
  */
 export function OnboardingScreen() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { status, isAnonymous } = useAuth()
   const reducedMotion = usePrefersReducedMotion()
+
+  // Settings' "Replay onboarding" reaches this same route with `{ state:
+  // { replay: true } }` (see RedirectIfOnboarded, App.tsx) — the only way
+  // to land here with a REAL account already active, since every other
+  // path here requires `hasCompletedOnboarding()` to be false, which
+  // (now that `handleGetStarted` below no longer sets it) only happens
+  // before a real account exists. Neither CTA makes sense for someone
+  // already logged in — "Get started"/"Sign in" would just re-run
+  // registration/login on an account that's already signed in — so both
+  // are hidden for this one specific combination, not for a replay alone
+  // (a stale localStorage edge case could theoretically still reach here
+  // anonymous) and not for a real account alone (no other path exists).
+  const alreadyLoggedIn = status === 'signedIn' && !isAnonymous
+  const isReplay = (location.state as { replay?: boolean } | null)?.replay === true
+  const hideCtas = isReplay && alreadyLoggedIn
 
   const [contentVisible, setContentVisible] = useState(reducedMotion)
   const [wordmarkVisible, setWordmarkVisible] = useState(reducedMotion)
@@ -178,10 +206,8 @@ export function OnboardingScreen() {
     onDone: () => setContentVisible(true),
   })
 
-  const handleGetStarted = () => {
-    markOnboardingComplete()
-    navigate('/checkin')
-  }
+  const handleGetStarted = () => navigate('/sign-up')
+  const handleSignIn = () => navigate('/sign-in')
 
   // Container's `pb-[max(24px,env(safe-area-inset-bottom))]` below (review
   // fix): the old flat `pb-6` (24px) predates `viewport-fit=cover` going
@@ -260,9 +286,14 @@ export function OnboardingScreen() {
         </div>
       </div>
 
-      <div className={cn('flex flex-col gap-4 transition-opacity duration-300', contentVisible ? 'opacity-100' : 'opacity-0')}>
-        <GradientActionButton onClick={handleGetStarted}>Get started</GradientActionButton>
-      </div>
+      {!hideCtas && (
+        <div className={cn('flex flex-col gap-4 transition-opacity duration-300', contentVisible ? 'opacity-100' : 'opacity-0')}>
+          <GradientActionButton onClick={handleGetStarted}>Get started</GradientActionButton>
+          <button type="button" onClick={handleSignIn} className="focus-ring pressable font-sans text-lg font-semibold text-[#e90555]">
+            Sign in
+          </button>
+        </div>
+      )}
 
       {showSplashCircle && (
         <div ref={circleRef} aria-hidden="true" className="pointer-events-none fixed z-50">
