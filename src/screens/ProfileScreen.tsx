@@ -59,8 +59,8 @@ export function ProfileScreen() {
       <TaskFlowHeader title="Profile" exit="close" onExit={() => navigate('/checkin')} />
       <div className="flex flex-1 flex-col px-5 pt-2">
         <div className="flex flex-col gap-2">
-          <label htmlFor="displayName" className="font-sans text-sm font-medium text-ink">
-            Display name
+          <label htmlFor="displayName" className="font-sans text-base font-medium text-ink">
+            Name
           </label>
           <TextInput
             id="displayName"
@@ -95,7 +95,7 @@ export function ProfileScreen() {
           <button
             type="button"
             onClick={() => navigate('/onboarding', { state: { replay: true } })}
-            className="focus-ring pressable flex items-center gap-3 rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left"
+            className="focus-ring pressable flex items-center justify-center gap-3 rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3"
           >
             <ArrowClockwise size={20} className="text-ink/70" />
             <span className="font-sans text-base font-medium text-ink">Replay onboarding</span>
@@ -107,7 +107,7 @@ export function ProfileScreen() {
           <button
             type="button"
             onClick={() => signOut()}
-            className="focus-ring pressable flex w-full items-center gap-3 rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3 text-left"
+            className="focus-ring pressable flex w-full items-center justify-center gap-3 rounded-card border border-solid border-neutral-border bg-offwhite px-4 py-3"
           >
             <SignOut size={20} className="text-warm" />
             <span className="font-sans text-base font-medium text-warm">Log out</span>

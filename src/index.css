@@ -498,6 +498,51 @@ body {
   }
 
   /*
+    ReturningUserLoadingScreen's continuous "still working" cue (review
+    fix) — once the entrance splash reveals the wordmark, a real async wait
+    (account creation, sign-in, session restore) can run for an
+    indeterminate length of time with nothing else on screen to signal it's
+    still in progress, which previously read as frozen. A looping
+    1-2-3-bounce on the wordmark's own dot — three subtle pulses, then one
+    larger springy one, repeating — reuses the same hop-and-overshoot feel
+    already established by `splash-circle-bounce` above (same overshoot
+    cubic-bezier), so it reads as "the same ball, still moving" rather than
+    a new, unrelated motion. Runs unconditionally from mount rather than
+    being gated on the entrance sequence's own reveal timing — it's
+    invisible until AppWordmark's own opacity fade reveals the dot anyway,
+    so there's nothing to desync. Applied via AppWordmark's `pulsing` prop,
+    which only ReturningUserLoadingScreen passes — OnboardingScreen reuses
+    the same component for its own static wordmark and deliberately leaves
+    it unset.
+  */
+  @keyframes wordmark-dot-pulse {
+    0%,
+    25%,
+    50%,
+    75%,
+    100% {
+      transform: scale(1) translateY(0);
+    }
+    12.5%,
+    37.5%,
+    62.5% {
+      transform: scale(1.15) translateY(0);
+    }
+    87.5% {
+      transform: scale(1.35) translateY(-3px);
+      animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+  }
+  .wordmark-dot-pulse {
+    animation: wordmark-dot-pulse 2000ms ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wordmark-dot-pulse {
+      animation: none;
+    }
+  }
+
+  /*
     Hides the native scrollbar on swipeable/touch-scroll rows (e.g. the
     Patterns quick-filter tabs). These are meant to scroll by swipe, not
     a visible desktop scrollbar — and on desktop Chrome, a reserved-space

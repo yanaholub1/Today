@@ -106,7 +106,7 @@ export function ReturningUserLoadingScreen({ onDone }: ReturningUserLoadingScree
       className="relative mx-auto flex h-dvh w-full max-w-[393px] items-center justify-center overflow-hidden"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
-      <AppWordmark dotRef={dotRef} visible={wordmarkVisible} />
+      <AppWordmark dotRef={dotRef} visible={wordmarkVisible} pulsing />
 
       {showSplashCircle && (
         <div ref={circleRef} aria-hidden="true" className="pointer-events-none fixed z-50">

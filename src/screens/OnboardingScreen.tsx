@@ -251,7 +251,7 @@ export function OnboardingScreen() {
       <AppWordmark dotRef={dotRef} visible={wordmarkVisible} />
 
       {/*
-        Both gaps below are `clamp(MIN, slope·1vh + offset, MAX)`, not a
+        Both gaps below are `clamp(MIN, slope·1dvh + offset, MAX)`, not a
         fixed `gap-10`/`gap-8` (review fix, companion to the `h-dvh` fix
         above): this section has no `min-height:0`, so on a short enough
         real viewport its own intrinsic content height simply won't
@@ -269,11 +269,24 @@ export function OnboardingScreen() {
         real visible height once Safari's own toolbar is accounted for),
         so most devices see no visible change and only genuinely short
         ones see spacing ease off gracefully instead of overflowing.
+
+        Review fix — `dvh`, not `vh`, in both formulas below (was `10vh`/
+        `8vh`): the container's own height went from `vh` to `dvh` above,
+        but these two gaps still measured "how short is the viewport" off
+        the OLD, toolbar-collapsed-assuming unit, so the two halves of this
+        same fix had fallen out of sync. In-browser, with Safari's toolbar
+        actually showing, `vh` overstates the real available height, so the
+        clamp's middle term computed as if there were more room than there
+        really was and eased off compressing too early — content sat closer
+        to the CTA than the layout intended. Standalone (added-to-home-
+        screen) never showed this: no toolbar to hide/show means `vh` and
+        `dvh` are numerically identical there, so this bug could only ever
+        surface in-browser, matching exactly where it was reported.
       */}
-      <div className={cn('flex flex-1 flex-col items-center justify-center gap-[clamp(1rem,10vh_-_40px,2.5rem)] transition-opacity duration-300', contentVisible ? 'opacity-100' : 'opacity-0')}>
+      <div className={cn('flex flex-1 flex-col items-center justify-center gap-[clamp(1rem,10dvh_-_40px,2.5rem)] transition-opacity duration-300', contentVisible ? 'opacity-100' : 'opacity-0')}>
         <h1 className="w-full text-center font-serif text-[28px] leading-normal tracking-[-0.56px] text-ink">Step out of autopilot. Gently.</h1>
 
-        <div className="flex w-full flex-col gap-[clamp(0.75rem,8vh_-_32px,2rem)]">
+        <div className="flex w-full flex-col gap-[clamp(0.75rem,8dvh_-_32px,2rem)]">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="flex w-full items-center gap-5">
               <img src={feature.icon} alt="" className="size-12 shrink-0" />
