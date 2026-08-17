@@ -12,9 +12,9 @@ import connectIcon from '../assets/OnboardingConnect.png'
 import patternsIcon from '../assets/OnboardingPatterns.png'
 
 const FEATURES = [
-  { icon: noticeIcon, title: 'Notice what matters', description: 'Set up to 3 intentions for the things that matter most to you today.' },
-  { icon: connectIcon, title: 'Connect with your emotions', description: 'Check in with your mood and find practices that help.' },
-  { icon: patternsIcon, title: 'Find your patterns', description: 'See what becomes a priority, and what helps or gets in the way.' },
+  { icon: noticeIcon, title: 'Set your intentions', description: 'Choose up to 3 things that matter most to you today.' },
+  { icon: connectIcon, title: 'Reflect on your day', description: 'Look back on your intentions and notice how they went.' },
+  { icon: patternsIcon, title: 'Track your mood & patterns', description: 'See what becomes a priority, what helps, and gets in the way.' },
 ] as const
 
 // The circle's own giant/hold/collapse/bounce timing now lives in
