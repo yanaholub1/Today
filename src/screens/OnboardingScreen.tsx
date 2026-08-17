@@ -230,9 +230,33 @@ export function OnboardingScreen() {
   // this fix — confirmed via direct measurement that content can also
   // genuinely overflow a short-enough real viewport even with the
   // correct height unit, not just APPEAR to via the `vh` mismatch above.
+  //
+  // Review fix — top padding (`pt-[clamp(...)]` below) now compresses
+  // FIRST on a short viewport, not a flat, never-shrinking
+  // `max(4rem, safe-area+1rem)` floor: with the two content `gap-[clamp(...)]`
+  // values below as the only compressible space, a real in-browser
+  // (toolbar-visible) viewport was found to still crowd content into the
+  // CTA even though this top margin was sitting at its full, uncompressed
+  // 64px the whole time — dead space the compression logic couldn't reach.
+  // Review fix #2 — the compression band below was originally 900px→800px
+  // (entirely above the content gaps' own 800px→560px band, so the two
+  // would never overlap at all) — reverted after direct measurement showed
+  // that band swallows ordinary, currently-uncompressed STANDALONE heights
+  // too (e.g. 812px, the iPhone mini's real home-screen height), visibly
+  // shrinking this margin there even though standalone was already correct
+  // and must stay untouched. Now 800px→700px instead — the SAME 800px
+  // onset the content gaps already used before this fix (so nothing above
+  // 800px changes, standalone included), but a steeper slope (reaches its
+  // own 32px floor by 700px, 3x faster than the content gaps' own decline
+  // over their wider 800–560px range) — so in the immediate sub-800 zone
+  // this margin absorbs most of the initial squeeze, and only once it
+  // bottoms out at 700px do the content gaps take over the rest of the
+  // compression alone, unchanged from before this fix. (A touch more/less
+  // on a notched device — the safe-area floor drops from +1rem to +0.5rem
+  // in step, never below what the notch actually needs.)
   return (
     <div
-      className="relative mx-auto flex h-dvh w-full max-w-[393px] flex-col overflow-hidden px-5 pt-[max(4rem,calc(env(safe-area-inset-top)+1rem))] pb-[max(24px,env(safe-area-inset-bottom))]"
+      className="relative mx-auto flex h-dvh w-full max-w-[393px] flex-col overflow-hidden px-5 pt-[clamp(max(2rem,calc(env(safe-area-inset-top)+0.5rem)),32dvh_-_192px,max(4rem,calc(env(safe-area-inset-top)+1rem)))] pb-[max(24px,env(safe-area-inset-bottom))]"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
       {/*
