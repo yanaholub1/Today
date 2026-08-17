@@ -35,11 +35,15 @@ export interface SegmentedFilterPillProps {
  * its own rounded corners and a -28px overlap to fake one fused capsule).
  *
  * The frame itself is now the only thing that shapes the capsule: fixed
- * 293x54px, `rounded-pill` (400px), 1px inside stroke `#ddd4da`, fill
- * `#fbf8fa` (both values match the already-defined `MOOD_CATEGORY_DEFAULT`
- * in lib/moodCategories.ts), and `overflow-hidden` so idle segments don't
- * need any rounding of their own — the frame crops them into the capsule
- * shape. Every segment — selected included — is
+ * 293x54px, `rounded-pill` (400px), fill `#fbf8fa` (matches the already-
+ * defined `MOOD_CATEGORY_DEFAULT` in lib/moodCategories.ts), and
+ * `overflow-hidden` so idle segments don't need any rounding of their own
+ * — the frame crops them into the capsule shape. Review fix: the frame's
+ * own 1px `#ddd4da` stroke is gone (explicit direct request) — fill-only
+ * now, no outer border. The selected segment's own stroke (see below) is
+ * a SEPARATE ring, now drawn inside its own bounds so this same
+ * `overflow-hidden` frame can never clip it. Every segment — selected
+ * included — is
  * `basis-1/4 grow-0 shrink-0 min-w-0`, so all 4 split the 293px frame
  * evenly (explicit correction: an earlier pass gave the selected segment a
  * fixed 94px width with the 3 idle segments splitting only the remainder).
@@ -69,9 +73,10 @@ export interface SegmentedFilterPillProps {
  *
  * The selected segment keeps its own category fill/border/shadow (still
  * verified against 109:3408/109:3424, 109:3522, 111:5363, 111:5442), full
- * rounding, a stroke drawn as an outside box-shadow ring rather than a real
- * `border` (see inline comment below for why), `z-10` so that ring stays
- * visible over the adjacent idle segments at the seam, and — explicit
+ * rounding, a stroke drawn as an INSIDE box-shadow ring rather than a real
+ * `border` (see inline comment below for why, and for the review fix that
+ * moved it from outside to inside), `z-10` so that ring stays visible over
+ * the adjacent idle segments at the seam, and — explicit
  * direct request — its icon recolors to `selected.iconColor` (e.g.
  * `MOOD_QUADRANTS[n].textColor`, already Figma-confirmed per quadrant),
  * falling back to the default dark icon color when omitted.
@@ -87,7 +92,7 @@ export function SegmentedFilterPill({ items, activeId, onActiveChange, onSeeAll,
 
   return (
     <div className={cn('flex items-center', className)}>
-      <div className="flex h-[54px] w-[293px] items-center overflow-hidden rounded-pill border border-solid border-[#ddd4da] bg-[#fbf8fa]">
+      <div className="flex h-[54px] w-[293px] items-center overflow-hidden rounded-pill bg-[#fbf8fa]">
         {items.map((item, index) => {
           const isSelected = index === selectedIndex
           const Icon = item.icon
@@ -104,22 +109,20 @@ export function SegmentedFilterPill({ items, activeId, onActiveChange, onSeeAll,
                 className="focus-ring pressable z-10 flex h-[54px] min-w-0 basis-1/4 grow-0 shrink-0 items-center justify-center rounded-pill"
                 style={{
                   backgroundColor: style.fill,
-                  // Figma's stroke on this shape is "outside" alignment —
-                  // it extends past the shape's own bounds rather than
-                  // eating into it. A plain `border` doesn't have that
-                  // concept once box-sizing:border-box is in play (this
-                  // project's Tailwind base resets every element to it),
-                  // so it'd draw the stroke inward instead. `outline`
-                  // would be the natural fix, but this element already
-                  // uses `outline` for its `focus-ring` focus-visible
-                  // state — an inline `outline` here would permanently
-                  // win over that (inline styles beat classes) and break
-                  // keyboard focus. A zero-blur, 1px-spread box-shadow
-                  // achieves the same "solid ring sitting outside the
-                  // box, following border-radius" effect without
-                  // touching `outline`, stacked as an extra layer after
-                  // the category's own sheen shadow.
-                  boxShadow: `${style.boxShadow}, 0 0 0 1px ${style.border}`,
+                  // Review fix — was an OUTSIDE ring (Figma's own stroke
+                  // alignment on this shape): `0 0 0 1px` extends past the
+                  // button's own bounds, which the surrounding frame's
+                  // `overflow-hidden` (this component's own doc comment)
+                  // then clips off wherever the selected segment sits at
+                  // the capsule's outer edge — explicit direct request to
+                  // draw it INSIDE instead so it's never cut. `inset 0 0 0
+                  // 1px` is the same zero-blur, 1px-spread box-shadow
+                  // technique, just drawn inward — still not a real
+                  // `border` (box-sizing:border-box would eat into the
+                  // layout) and still not `outline` (already used for this
+                  // element's own `focus-ring` state), stacked as an extra
+                  // layer after the category's own sheen shadow.
+                  boxShadow: `${style.boxShadow}, inset 0 0 0 1px ${style.border}`,
                 }}
               >
                 <Icon size={28} weight="fill" color={style.iconColor} />

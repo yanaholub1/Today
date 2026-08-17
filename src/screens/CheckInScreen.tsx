@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart } from '@phosphor-icons/react'
 import { CompletionSummaryCard } from '../components/CompletionSummaryCard'
@@ -11,13 +11,13 @@ import { SecondaryNav } from '../components/SecondaryNav'
 import type { SecondaryNavSection } from '../components/SecondaryNav'
 import { CheckInMenuSheet } from '../components/CheckInMenuSheet'
 import { getGreeting } from '../lib/greeting'
+import { getDisplayName } from '../lib/displayName'
 import { useDayLogStore } from '../lib/dayLogStore'
+import { useAuth } from '../lib/authStore'
+import { fetchPastDayBundles } from '../lib/dayLogHistory'
 import { QUADRANT_TO_MOOD_CATEGORY } from '../lib/moodCategories'
 import { TECHNIQUES } from '../lib/moodTechniques'
 import { cn } from '../lib/cn'
-
-// Mock — real name needs an authenticated user, not built yet. Matches node 117:5748's "Good morning, Yana".
-const MOCK_USER_NAME = 'Yana'
 
 /**
  * Home screen. HomeHeader (Fix 19) is verified against 117:5748 and is
@@ -59,25 +59,36 @@ const MOCK_USER_NAME = 'Yana'
  * lower-risk option over introducing a new cross-component store for
  * one boolean.
  *
- * When there's no day content at all, `DaySummaryCard` itself grows
- * (`flex-1`) to fill the space this screen already stretches to fill above
- * TabLayout's pinned tab bar, with a fixed `mb-[77px]` reserved below it —
- * explicit direct request: rather than un-pinning the tab bar (which would
- * need a `TabLayout` change affecting every tab screen) or leaving a
- * viewport-dependent gap, the CARD's own height is what shrinks, so the
- * gap below it is real regardless of viewport height. That margin isn't
- * 40px on its own — the floating "+" button's own circle pokes up 37px
- * above the bar it sits on (`TAB_BAR_FAB_GLOW.top` in BottomNav), so 77px
- * (40 + 37) is what actually lands a 40px gap on the BUTTON itself, not
- * just the bar behind it. This screen's own root also drops its usual
- * `pb-8` in this branch — that bottom padding exists for the scrollable,
- * natural-height `CompletionSummaryCard` case, but here it would just add
- * 32px past where the card's own margin already lands the bar. This only
- * applies to the empty-state branch — `CompletionSummaryCard` keeps its
- * natural,
- * non-stretched height and the root's `pb-8`, since growing it wasn't
- * asked for and it isn't a single centered glyph+text block the way
- * `DaySummaryCard` is.
+ * Empty state now has two distinct heights depending on whether the user
+ * has EVER logged anything, not just today (review fix — this used to be
+ * one `DaySummaryCard` treatment regardless):
+ *  - Genuinely nothing logged, ever (`isCompleteEmpty`, checked against
+ *    `hasPastEntries` below — a lightweight reuse of the same
+ *    `fetchPastDayBundles` query `EntriesScreen`/`PatternsScreen` already
+ *    run for their own history, just read for existence, not full data):
+ *    `DaySummaryCard` grows (`flex-1`) to fill the space this screen
+ *    already stretches to fill above TabLayout's pinned tab bar, with a
+ *    fixed `mb-[77px]` reserved below it — unchanged from before this fix.
+ *    Rather than un-pinning the tab bar (which would need a `TabLayout`
+ *    change affecting every tab screen) or leaving a viewport-dependent
+ *    gap, the CARD's own height is what shrinks, so the gap below it is
+ *    real regardless of viewport height. That margin isn't 40px on its
+ *    own — the floating "+" button's own circle pokes up 37px above the
+ *    bar it sits on (`TAB_BAR_FAB_GLOW.top` in BottomNav), so 77px (40 +
+ *    37) is what actually lands a 40px gap on the BUTTON itself, not just
+ *    the bar behind it.
+ *  - Today's empty but real history exists (explicit direct request, per
+ *    Figma): `DaySummaryCard` instead hugs its own natural content height
+ *    (`h-[166px]`, this state's own Figma-specified number — not derived
+ *    from flex/stretch math like the case above), same treatment
+ *    `CompletionSummaryCard` already gets when there IS real content.
+ *
+ * This screen's own root drops its usual `pb-8` ONLY for the
+ * `isCompleteEmpty` branch — that bottom padding exists for every OTHER
+ * case (natural-height content, whether `CompletionSummaryCard` or the
+ * new hugging `DaySummaryCard`), but for the flex-1/`mb-[77px]` case it
+ * would just add 32px past where the card's own margin already lands the
+ * bar.
  *
  * Review fix — SecondaryNav's two sections now actually diverge: `notes`
  * is everything described above; `practices` is a new, separate branch
@@ -88,12 +99,50 @@ const MOCK_USER_NAME = 'Yana'
  * `key={section}` remount trick is gone: it existed only because both
  * sections rendered the identical placeholder before, which no longer
  * applies now that they render genuinely different content.
+ *
+ * Review fix — short-viewport compression, same `clamp(MIN, a·vh + b, MAX)`
+ * mechanism OnboardingScreen's own doc comment established (companion to
+ * that screen's `h-dvh` fix, reused here on `TabLayout`'s own container):
+ * on a short enough real viewport this screen's intrinsic content height
+ * (header + SecondaryNav + title + card) can exceed the space
+ * `TabLayout`'s `flex-1 overflow-y-auto` region has available, which used
+ * to just scroll internally rather than compress. The two `mt-5` gaps
+ * (HomeHeader→SecondaryNav, SecondaryNav→title) and the title→card `gap-3`
+ * are now the compressible ones — `MAX` in each is this screen's own
+ * original value, so nothing changes at any normal/larger viewport height;
+ * `MIN` is a floor that keeps rows from crowding. Deliberately NOT
+ * touched: `mb-[77px]` (empty-state gap to the floating button) and the
+ * root's `pb-8` (gap to the tab bar with real content) — both stay fixed,
+ * per this screen's own non-negotiable clearance around the FAB/tab bar.
+ * Anchored to the same 800px/560px viewport-height reference points
+ * Onboarding's own gaps use, so a device short enough to compress one
+ * screen compresses the other by a comparable amount.
  */
 export function CheckInScreen() {
   const navigate = useNavigate()
   const [section, setSection] = useState<SecondaryNavSection>('notes')
   const [menuOpen, setMenuOpen] = useState(false)
   const { dayLog, intentions, moodCheckIns, favoriteTechniqueIds, toggleFavoriteTechnique } = useDayLogStore()
+  const { userId } = useAuth()
+
+  // Existence-only check, reusing the same query EntriesScreen/PatternsScreen
+  // already run for their own real history — see this component's own doc
+  // comment for why the true-empty vs. today-only-empty distinction needs
+  // this at all.
+  const [hasPastEntries, setHasPastEntries] = useState(false)
+  useEffect(() => {
+    if (!userId) {
+      setHasPastEntries(false)
+      return
+    }
+    let cancelled = false
+    fetchPastDayBundles(userId).then((bundles) => {
+      if (!cancelled) setHasPastEntries(bundles.length > 0)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   const reflectedIntentions = intentions.filter((intention) => intention.reflectedAt !== null)
   const dayLogView: DayLog = {
@@ -103,6 +152,7 @@ export function CheckInScreen() {
     moodCheckIns: moodCheckIns.map((m) => ({ id: m.id, emotion: m.emotion, categoryId: QUADRANT_TO_MOOD_CATEGORY[m.quadrant] })),
   }
   const hasDayContent = !!dayLogView.intention || dayLogView.moodCheckIns.length > 0
+  const isCompleteEmpty = !hasDayContent && !hasPastEntries
 
   // Review fix — no Figma node for this list yet (see PracticeCard.tsx's
   // own doc comment). `.filter((t): t is ... => ...)` drops any stale id
@@ -123,20 +173,20 @@ export function CheckInScreen() {
   }
 
   return (
-    <div className={cn('flex min-h-full flex-col', hasDayContent && 'pb-8')}>
-      <HomeHeader greeting={`${getGreeting()}, ${MOCK_USER_NAME}`} onSettingsClick={() => navigate('/settings')} onProfileClick={() => navigate('/profile')} />
+    <div className={cn('flex min-h-full flex-col', !isCompleteEmpty && 'pb-8')}>
+      <HomeHeader greeting={getGreeting(getDisplayName())} onSettingsClick={() => navigate('/settings')} onProfileClick={() => navigate('/profile')} />
 
       <div className="flex flex-1 flex-col px-5">
         {/* self-start — the switcher should hug its own content width, not stretch to the row's full width the way a flex-column child does by default. */}
-        <SecondaryNav activeSection={section} onSectionChange={setSection} className="mt-5 self-start" />
+        <SecondaryNav activeSection={section} onSectionChange={setSection} className="mt-[clamp(0.5rem,5vh_-_20px,1.25rem)] self-start" />
 
         {section === 'notes' ? (
-          // gap-3 (12px) is an explicit request, applying uniformly regardless of which card renders below "Today" — superseding Fix 17's original 18px (node 117:5768's own title-to-card spacing). mt-5 keeps this block exactly 20px below SecondaryNav (explicit request, superseding Fix 18's original 32px). flex-1 (only when empty) lets DaySummaryCard grow into this block's own stretch — see this component's own doc comment. Title is text-lg (18px) — explicit direct correction, was text-xl (20px).
-          <div className={cn('mt-5 flex flex-col gap-3', !hasDayContent && 'flex-1')}>
+          // gap-3 (12px) is an explicit request, applying uniformly regardless of which card renders below "Today" — superseding Fix 17's original 18px (node 117:5768's own title-to-card spacing). mt-5 keeps this block exactly 20px below SecondaryNav (explicit request, superseding Fix 18's original 32px). flex-1 (only when truly empty) lets DaySummaryCard grow into this block's own stretch — see this component's own doc comment for why that's now `isCompleteEmpty`, not just `!hasDayContent`. Title is text-lg (18px) — explicit direct correction, was text-xl (20px).
+          <div className={cn('mt-[clamp(0.5rem,5vh_-_20px,1.25rem)] flex flex-col gap-[clamp(0.375rem,2.5vh_-_8px,0.75rem)]', isCompleteEmpty && 'flex-1')}>
             <h2 className="font-serif text-lg text-ink">Today</h2>
             {hasDayContent ? (
               <CompletionSummaryCard {...dayLogView} onClick={openDayDetail} />
-            ) : (
+            ) : isCompleteEmpty ? (
               // `flex-1` shrinks the card to leave exactly 40px before the
               // floating "+" button itself (explicit direct correction — not
               // the bar's own top edge): the button's circle pokes up 37px
@@ -145,6 +195,11 @@ export function CheckInScreen() {
               // BUTTON, not the bar behind it — see this component's own doc
               // comment.
               <DaySummaryCard onClick={() => setMenuOpen(true)} className="mb-[77px] flex-1" />
+            ) : (
+              // Today's empty but real history exists — this state's own
+              // Figma-specified height (166px), hugging its own content
+              // instead of stretching. See this component's own doc comment.
+              <DaySummaryCard onClick={() => setMenuOpen(true)} className="h-[166px]" />
             )}
           </div>
         ) : (
@@ -152,7 +207,7 @@ export function CheckInScreen() {
           // PracticeCard.tsx's own doc comment. Mirrors the Notes branch's
           // own rhythm (mt-5, gap-3, flex-1-when-empty) rather than inventing
           // a different one.
-          <div className={cn('mt-5 flex flex-col gap-3', favoriteTechniques.length === 0 && 'flex-1')}>
+          <div className={cn('mt-[clamp(0.5rem,5vh_-_20px,1.25rem)] flex flex-col gap-[clamp(0.375rem,2.5vh_-_8px,0.75rem)]', favoriteTechniques.length === 0 && 'flex-1')}>
             <h2 className="font-serif text-lg text-ink">Practices</h2>
             {favoriteTechniques.length > 0 ? (
               <div className="flex flex-col gap-2">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Circle, CircleHalf, Clock, Heart, PencilSimple, MoonStars, X } from '@phosphor-icons/react'
+import { Circle, CircleHalfTilt, Clock, Heart, PencilSimple, MoonStars, X } from '@phosphor-icons/react'
 import { PillSubtabSwitcher } from '../components/PillSubtabSwitcher'
 import { IconTapTarget } from '../components/IconTapTarget'
 import { MoodQuadrantBadge } from '../components/MoodQuadrantBadge'
@@ -72,7 +72,7 @@ function IntentionDetailCard({ intention }: { intention: IntentionRecord }) {
   const tagPair = intention.tag ? REFLECTION_TAGS.find((t) => t.id === intention.tag) : undefined
   const reason = tagPair ? reflectionTagLabel(tagPair, intention.glad === true) : null
 
-  const OutcomeIcon = intention.glad ? Circle : CircleHalf
+  const OutcomeIcon = intention.glad ? Circle : CircleHalfTilt // review fix — was CircleHalf, see EveningReflectionFlow.tsx's own doc comment (node 363:11766)
   const outcomeLabel = intention.glad ? 'Went well' : 'Not really'
 
   return (

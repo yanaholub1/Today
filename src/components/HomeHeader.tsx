@@ -40,22 +40,32 @@ export interface HomeHeaderProps {
  * streak subtitle ("N days in a row") was removed on request — 117:5748
  * never had it in the first place, so this now matches the node exactly.
  *
- * `pt-[64px]` (top-of-screen to "Good morning") and no bottom padding at
- * all — re-verified against 242:1553's own wrapper (`pt-[64px]` once,
- * then a uniform `gap-[20px]` between the header/nav/Today rows, not
- * padding baked into the header itself). Explicit direct correction: the
- * earlier `pt-[58px]`/`pb-[24px]` pair were 117:5748's numbers from when
- * this header still had its own pink card fill — pb-24 in particular was
- * that fill's internal bottom padding, which no longer means anything now
- * that the fill is gone, and was silently stacking with `SecondaryNav`'s
- * own `mt-5` to produce a 44px gap instead of the intended 20px. Removing
- * it here lets the callers' own `mt-5` (20px) be the ONLY thing spacing
- * `SecondaryNav` below this header, matching the Today title's own
- * `mt-5` below `SecondaryNav` — a consistent 20/20 rhythm end to end.
+ * No bottom padding at all — re-verified against 242:1553's own wrapper
+ * (a single top inset, then a uniform `gap-[20px]` between the
+ * header/nav/Today rows, not padding baked into the header itself).
+ * Explicit direct correction: the earlier `pt-[58px]`/`pb-[24px]` pair
+ * were 117:5748's numbers from when this header still had its own pink
+ * card fill — pb-24 in particular was that fill's internal bottom
+ * padding, which no longer means anything now that the fill is gone, and
+ * was silently stacking with `SecondaryNav`'s own `mt-5` to produce a
+ * 44px gap instead of the intended 20px. Removing it here lets the
+ * callers' own `mt-5` (20px) be the ONLY thing spacing `SecondaryNav`
+ * below this header, matching the Today title's own `mt-5` below
+ * `SecondaryNav` — a consistent 20/20 rhythm end to end.
+ *
+ * Review fix — top inset is now `pt-[max(16px,env(safe-area-inset-top))]`
+ * (was a flat `pt-[64px]`): that fixed value left a large empty gap above
+ * the greeting compared to `TaskFlowHeader`'s own top inset (used by the
+ * intention-setting/mood check-in flows), which is safe-area-aware and
+ * much smaller on any non-notched viewport — a real layout inconsistency
+ * between this screen and those flows, not a deliberate difference.
+ * Reuses `TaskFlowHeader`'s exact value rather than inventing a new one,
+ * so Home/Journal (this header's only two callers) now open at the same
+ * top position the flows already use.
  */
 export function HomeHeader({ greeting, onSettingsClick, onProfileClick }: HomeHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-5 pt-[64px]">
+    <div className="flex items-center justify-between px-5 pt-[max(16px,env(safe-area-inset-top))]">
       {/* text-[20px] — explicit direct correction, was 18px (117:5748's own size). */}
       <p className="font-serif text-[20px] tracking-[-0.18px] text-ink">{greeting}</p>
       <div className="flex items-center gap-2">

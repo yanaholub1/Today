@@ -1,9 +1,14 @@
-// One-shot flag: the check-in FAB's own giant-circle splash (BottomNav.tsx)
-// should only ever play once per session — on the very first time the
-// authenticated app shell mounts, not on every later remount of BottomNav
-// (e.g. leaving via a FlowLayout route and coming back). A plain module
-// singleton (not sessionStorage-backed) is deliberate: it resets on a real
-// page reload, matching "first time THIS SESSION," and needs no cleanup.
+// One-shot flag: ReturningUserLoadingScreen's own giant-circle-collapses-
+// onto-the-wordmark sequence should only ever play once per session, on
+// the very first time a returning user lands on `/loading`, not on a
+// mid-session revisit to `/`. A plain module singleton (not
+// sessionStorage-backed) is deliberate: it resets on a real page reload,
+// matching "first time THIS SESSION," and needs no cleanup.
+//
+// Review fix: BottomNav.tsx used to be this flag's other consumer (its
+// own check-in-FAB splash, landing the same kind of circle on the "+"
+// button on first mount) — that animation was removed per explicit
+// request, so this flag now has exactly one owner.
 //
 // Split into a pure read and a separate claim, rather than one
 // read-and-claim function, so callers can read this safely from a

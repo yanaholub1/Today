@@ -174,16 +174,31 @@
 }
 
 /*
-  `background` here matches index.html's own inline `style="background:
-  #F63176"` on <body> (explicit request) — that inline attribute is what
-  actually prevents the pre-JS flash-of-white (it paints before this
-  stylesheet can even load), so this rule exists only so the two stay in
-  sync once this file DOES load, rather than silently disagreeing with
-  what's already on screen.
+  `background`/`min-height` here match index.html's own inline `style`
+  on <body> — that inline attribute is what actually prevents the pre-JS
+  flash-of-white (it paints before this stylesheet can even load), so
+  this rule exists only so the two stay in sync once this file DOES
+  load, rather than silently disagreeing with what's already on screen.
+  Review fix: was a flat `#F63176` — now the same vertical gradient as
+  index.html's own inline style (`#F684C3` top → `#F00A5B` bottom, the
+  literal value of `ONBOARDING_SPLASH_GRADIENT` in
+  src/lib/splashGradients.ts — see index.html's own comment for why this
+  can't just import that constant). `min-height: 100dvh` +
+  `background-repeat: no-repeat` + explicit `background-size` are a
+  second review fix, for a real bug the first pass introduced: with no
+  explicit height, <body>'s own box was near-zero during the pre-content
+  window this background is for, so the gradient's default `auto` sizing
+  computed against that tiny box and then tiled (default `repeat`) to
+  fill the viewport it actually paints onto — many small repeating
+  bands instead of one smooth transition. See index.html's own comment
+  for the full mechanism.
 */
 body {
   margin: 0;
-  background: #F63176;
+  min-height: 100dvh;
+  background-image: linear-gradient(180deg, #F684C3, #F00A5B);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
   color: var(--color-ink);
   font-family: var(--font-sans);
 }

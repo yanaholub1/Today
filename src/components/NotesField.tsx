@@ -99,7 +99,7 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
           onChange={(e) => onChange(e.target.value)}
           placeholder="Add your thoughts"
           rows={3}
-          className="focus-ring-field w-full flex-1 resize-none bg-transparent font-sans text-base font-medium text-ink placeholder:text-[#787d89]"
+          className="focus-ring-field w-full flex-1 resize-none rounded-[20px] bg-transparent font-sans text-base font-medium text-ink placeholder:text-[#787d89]"
         />
         {Ctor && (
           <button

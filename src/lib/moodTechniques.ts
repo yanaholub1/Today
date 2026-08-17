@@ -38,14 +38,15 @@ export interface TechniqueDef {
 }
 
 /** The brief's own tag→technique table, verbatim. */
+// review fix — labels are sentence case (only the name's first letter capitalized), was Title Case
 export const TECHNIQUES: TechniqueDef[] = [
-  { id: 'paced-breathing', label: 'Paced Breathing', tag: 'Breathing', durationMinutes: 2, instructions: 'Breathe in for 4 counts, hold for 4, then breathe out for 6. Repeat for a few rounds, letting your shoulders drop a little more each time.' },
-  { id: 'focused-attention', label: 'Focused Attention', tag: 'Grounding', durationMinutes: 3, instructions: 'Pick one object nearby and study it for a minute — its color, texture, edges. Let your attention rest there instead of on your thoughts.' },
-  { id: 'nature-pause', label: 'Nature Pause', tag: 'Grounding', durationMinutes: 2, instructions: 'Step outside or find a window. Spend a minute just noticing the sky, air, or anything green nearby.' },
-  { id: 'expressive-writing', label: 'Expressive Writing', tag: 'Reflection', durationMinutes: 5, instructions: "Write freely for a few minutes about what you're feeling and why, without worrying about how it sounds." },
-  { id: 'gratitude-note', label: 'Gratitude Note', tag: 'Reflection', durationMinutes: 3, instructions: "Write down one small thing you're grateful for right now, and why it matters to you." },
-  { id: 'progressive-muscle-relaxation', label: 'Progressive Muscle Relaxation', tag: 'Body', durationMinutes: 5, instructions: 'Starting at your feet, tense each muscle group for 5 seconds, then release. Work your way up to your shoulders and face.' },
-  { id: 'loving-kindness', label: 'Loving-Kindness', tag: 'Connection', durationMinutes: 3, instructions: 'Silently offer yourself a kind phrase, like "may I be at ease." Then extend the same phrase to someone you care about.' },
+  { id: 'paced-breathing', label: 'Paced breathing', tag: 'Breathing', durationMinutes: 2, instructions: 'Breathe in for 4 counts, hold for 4, then breathe out for 6. Repeat for a few rounds, letting your shoulders drop a little more each time.' },
+  { id: 'focused-attention', label: 'Focused attention', tag: 'Grounding', durationMinutes: 3, instructions: 'Pick one object nearby and study it for a minute — its color, texture, edges. Let your attention rest there instead of on your thoughts.' },
+  { id: 'nature-pause', label: 'Nature pause', tag: 'Grounding', durationMinutes: 2, instructions: 'Step outside or find a window. Spend a minute just noticing the sky, air, or anything green nearby.' },
+  { id: 'expressive-writing', label: 'Expressive writing', tag: 'Reflection', durationMinutes: 5, instructions: "Write freely for a few minutes about what you're feeling and why, without worrying about how it sounds." },
+  { id: 'gratitude-note', label: 'Gratitude note', tag: 'Reflection', durationMinutes: 3, instructions: "Write down one small thing you're grateful for right now, and why it matters to you." },
+  { id: 'progressive-muscle-relaxation', label: 'Progressive muscle relaxation', tag: 'Body', durationMinutes: 5, instructions: 'Starting at your feet, tense each muscle group for 5 seconds, then release. Work your way up to your shoulders and face.' },
+  { id: 'loving-kindness', label: 'Loving-kindness', tag: 'Connection', durationMinutes: 3, instructions: 'Silently offer yourself a kind phrase, like "may I be at ease." Then extend the same phrase to someone you care about.' },
 ]
 
 /** The brief's own quadrant→tag table, verbatim. */

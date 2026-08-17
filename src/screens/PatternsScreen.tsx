@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Circle, CircleHalf } from '@phosphor-icons/react'
+import { Circle, CircleHalfTilt } from '@phosphor-icons/react'
 import { PillSubtabSwitcher } from '../components/PillSubtabSwitcher'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { RankedBarRow } from '../components/RankedBarRow'
@@ -90,10 +90,13 @@ function EmptyState() {
  * `subtab === 'mood'` branch below.
  *
  * No `HomeHeader` on this screen (review fix — explicit direct request,
- * the greeting/settings/profile row doesn't belong on Patterns); the
- * `pt-16` on this screen's own content wrapper below replaces the top
- * inset `HomeHeader` used to provide, so "Patterns" doesn't sit flush
- * against the very top edge.
+ * the greeting/settings/profile row doesn't belong on Patterns); this
+ * screen's own content wrapper below carries its own top inset instead,
+ * so "Patterns" doesn't sit flush against the very top edge. Review fix:
+ * that inset is now `pt-[max(16px,env(safe-area-inset-top))]` (was a flat
+ * `pt-16`/64px) — matching `TaskFlowHeader`'s own top inset (the
+ * intention-setting/mood check-in flows), which the flat value left this
+ * screen visibly misaligned against.
  *
  * The shared time-range/quick-filter row (part 2 of the brief) is now
  * `sticky top-0` together with the pill switcher, both pinned just below
@@ -269,10 +272,11 @@ export function PatternsScreen() {
 
   return (
     <div className="flex min-h-full flex-col pb-8">
-      <div className="flex flex-1 flex-col px-5 pt-16">
+      <div className="flex flex-1 flex-col px-5 pt-[max(16px,env(safe-area-inset-top))]">
         <h1 className="font-serif text-xl text-ink">Patterns</h1>
 
-        <div className="sticky top-0 z-20 mt-5 flex flex-col items-start gap-3 bg-white pt-3 pb-2">
+        {/* mt-3 (12px) — review fix, was mt-5 (20px), explicit direct request for this screen's own title-to-content gap. */}
+        <div className="sticky top-0 z-20 mt-3 flex flex-col items-start gap-3 bg-white pt-3 pb-2">
           <PillSubtabSwitcher items={SUBTABS} activeId={subtab} onChange={setSubtab} />
 
           <div className="flex w-full items-center gap-10 border-b border-solid border-black/10">
@@ -413,7 +417,7 @@ export function PatternsScreen() {
                                 {glad ? (
                                   <Circle size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                                 ) : (
-                                  <CircleHalf size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
+                                  <CircleHalfTilt size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                                 )}
                               </span>
                             ))}
@@ -437,7 +441,7 @@ export function PatternsScreen() {
                     <div className="flex items-center gap-1.5">
                       <span className="font-sans text-sm font-medium tracking-[-0.14px] text-ink/60">Not really</span>
                       <span className="flex size-4 shrink-0 items-center justify-center">
-                        <CircleHalf size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
+                        <CircleHalfTilt size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                       </span>
                     </div>
                   </div>

@@ -9,7 +9,22 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#ffffff" />
+    <!--
+      Review fix: was a static `#ffffff` — correct for every OTHER screen
+      (all plain white), but this default is what's active during the
+      brief pre-JS window covered by <body>'s own inline `background`
+      below, which is now a colored gradient, not white. A flat
+      `theme-color` can't reproduce a gradient across the whole top edge,
+      but `#F684C3` (that gradient's own top stop) is exact at the top
+      edge specifically, which is the only place this meta tag's own
+      effect (status-bar/toolbar chrome) actually renders — unlike the
+      body background, there's no "wrong at the bottom" to worry about.
+      `AuthLoadingScreen` (App.tsx) swaps this to `#ffdcf5` within one
+      `useEffect` tick of mounting (existing, unchanged logic) — a single
+      clean step once real JS state exists, not a flash of anything
+      in-between.
+    -->
+    <meta name="theme-color" content="#F684C3" />
   </head>
   <!--
     `style` here (not just `src/index.css`'s own `body` rule) is
@@ -17,14 +32,44 @@
     reaches this tag, with zero dependency on any external stylesheet or
     the JS bundle finishing — the only way to guarantee there's no flash
     of the browser's own default white before anything else can paint
-    over it. `#F63176` (explicit request) is the middle stop of
-    GradientActionButton's own primary gradient — same pink/magenta
-    family as Onboarding's splash-circle gradient (`#F684C3`→`#F00A5B`),
-    close enough that the blank instant before any JS runs and the
-    animation that follows it read as one continuous moment, not a
-    flash-then-swap.
+    over it. Review fix: was a flat `#F63176` fill — now a vertical
+    gradient, `#F684C3` (top) → `#F00A5B` (bottom), explicit request to
+    match the button/splash-circle gradient family exactly rather than
+    approximate it with one flat color. Same literal value as
+    `ONBOARDING_SPLASH_GRADIENT` in `src/lib/splashGradients.ts` (used by
+    `AuthLoadingScreen`'s own giant circle, the very next thing shown
+    once JS mounts) — kept as a literal string here, not an import,
+    since this file is static markup that predates any JS execution and
+    has no build-time interpolation wired up; the two are meant to be
+    read as one definition, just necessarily duplicated across a
+    JS/non-JS boundary.
+
+    Review fix — tiling stripes: <body> has no explicit height, so
+    during the pre-JS window this background is actually for (`#root`
+    still empty), body's own box collapses to near its content's height,
+    i.e. close to 0. A `<body>` background still PAINTS across the full
+    viewport (the browser propagates it to the canvas when `<html>` has
+    no background of its own), but the gradient's own default `auto`
+    size is computed against body's OWN (tiny) box, not the viewport it
+    gets painted onto — combined with the unset `background-repeat`
+    defaulting to `repeat`, that sliver of gradient tiled itself
+    downward many times instead of stretching once. `min-height: 100dvh`
+    gives body a real, viewport-matching box from the very first paint
+    (same `dvh`-over-`vh` reasoning as OnboardingScreen.tsx's own
+    container, for the same "don't undersize against a real device's
+    dynamic toolbar" reason), so the gradient's `auto` size is already
+    correct on its own — `background-repeat: no-repeat` and
+    `background-size: 100% 100%` are kept explicit anyway rather than
+    leaning on that default, per how this fix was specified.
   -->
-  <body style="background: #F63176">
+  <body
+    style="
+      min-height: 100dvh;
+      background-image: linear-gradient(180deg, #F684C3, #F00A5B);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+    "
+  >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

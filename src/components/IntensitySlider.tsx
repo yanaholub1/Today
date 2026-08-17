@@ -24,8 +24,8 @@ export interface IntensitySliderProps {
    * 3 = "current energy level" (9 marks: pills at 0/4/8, dots between,
    * Low/Medium/High labels). 5 = "mood/emotion intensity" (9 marks: pills
    * at every even index alternating with dots at odd indexes — 5 pills +
-   * 4 dots — numeral labels 1-5, plus a "Lowest"/"Highest" caption row
-   * beneath them). Controls tick layout, label count/text, and the label
+   * 4 dots — numeral labels 1-5, plus a "A little"/"Very intense" caption
+   * row beneath them). Controls tick layout, label count/text, and the label
    * row's own horizontal padding. Defaults to 3.
    */
   segments?: IntensitySliderSegments
@@ -58,7 +58,7 @@ const SEGMENT_CONFIG: Record<
     accentMarkIndexes: [0, 2, 4, 6, 8],
     defaultLabels: ['1', '2', '3', '4', '5'],
     labelPadding: 'px-10', // 40px / 40px
-    rangeCaption: ['Lowest', 'Highest'],
+    rangeCaption: ['A little', 'Very intense'], // review fix, was ['Lowest', 'Highest']
   },
 }
 
@@ -107,24 +107,52 @@ const TICK_CURRENT_HEIGHT = 55
 const TICK_WIDTH_PILL = 8
 const TICK_WIDTH_DOT = 6
 
-// Fill bar geometry — the track's own 40px horizontal padding (matches the
-// marks row's `px-10`) plus an 8px fudge so the fill's right edge reaches
-// the current mark's own right edge (a pill is 8px wide) rather than
-// stopping at its left edge/center. This is a proportional approximation
-// of Figma's fixed-pixel values (verified exact at the first mark: 40+0+8
-// = 48px, byte-matching the fetched "Low"/mood-1 fill width; a few px of
-// drift at later marks from Figma's own non-uniform mark spacing is
-// imperceptible at this track's actual rendered size) — chosen over
-// measuring the DOM directly since every other geometric value in this
-// component is already expressed as a CSS calc() rather than a layout
-// effect (see the old knob's `centerLeft`, same pattern).
+// Fill bar geometry — review fix, re-verified against Figma nodes 345:9526
+// ("Rating bar" in context) and 345:9529 (the fill frame isolated): the
+// fill's own right edge should land exactly on the current pill's own
+// right edge, INCLUDING that pill's `0.5px solid` stroke — "the vivid
+// frame ends right where the stroke of the long element ends," per
+// explicit direct request. get_metadata on 345:9526 gives exact bounding
+// boxes: fill width 181px, current pill (index 4 of 9, the 3-segment
+// variant's middle mark) at x=172.5/width=8 → its own right edge at
+// 180.5px, 0.5px short of the fill's 181px — exactly that pill's own
+// stroke width, confirming the fill is meant to sit flush with the
+// OUTSIDE of the stroke, not the pill's bare box.
+//
+// The OLD formula here was a naive linear interpolation of `markIndex /
+// (markCount - 1)` — that's only correct if every mark were the same
+// width, but marks alternate between 8px pills (`accentMarkIndexes`) and
+// 6px dots, and CSS `justify-content: space-between` (this row's own
+// layout) distributes its 8 gaps AROUND each mark's real width, not
+// around zero-width points. Re-deriving from the same metadata: gap width
+// = (track − 2×40px padding − total mark width) / 8, so the true right
+// edge of mark `i` is `40px + (sum of every mark's width up to and
+// including i) + i × gap`, which — expanded algebraically — resolves to a
+// single `calc(<px>px + <percent>%)` (below), not the old
+// proportional-of-100%-plus-a-flat-fudge shape. Verified exact against
+// the same 345:9526 data point (markIndex 4, 3-segment): this formula
+// gives `calc(4.5px + 50%)`, which at that node's own 353px track width
+// works out to 181px — byte-matching the fetched fill width above.
 const FILL_TRACK_PADDING = 40
-const FILL_EDGE_FUDGE = 8
+const FILL_EDGE_STROKE_FUDGE = 0.5 // the current pill's own `0.5px solid` border, drawn outside its box
 
-function fillWidthForMark(markIndex: number, markCount: number): string {
+function fillWidthForMark(markIndex: number, markCount: number, accentMarkIndexes: readonly number[]): string {
   if (markIndex >= markCount - 1) return '100%'
-  const fraction = markIndex / (markCount - 1)
-  return `calc(${FILL_TRACK_PADDING}px + (100% - ${FILL_TRACK_PADDING * 2}px) * ${fraction} + ${FILL_EDGE_FUDGE}px)`
+
+  const widthAt = (i: number) => (accentMarkIndexes.includes(i) ? TICK_WIDTH_PILL : TICK_WIDTH_DOT)
+  let widthUpToMark = 0
+  let totalMarkWidth = 0
+  for (let i = 0; i < markCount; i++) {
+    const w = widthAt(i)
+    totalMarkWidth += w
+    if (i <= markIndex) widthUpToMark += w
+  }
+
+  const gapCount = markCount - 1
+  const gapFraction = markIndex / gapCount
+  const pxPart = FILL_TRACK_PADDING + widthUpToMark - gapFraction * (FILL_TRACK_PADDING * 2 + totalMarkWidth) + FILL_EDGE_STROKE_FUDGE
+
+  return `calc(${pxPart}px + ${gapFraction * 100}%)`
 }
 
 /** A tick mark that cross-fades its color between default and filled via opacity, and tweens its height directly when it's the current position. */
@@ -164,7 +192,8 @@ function Tick({ isAccent, isPassed, isCurrent }: { isAccent: boolean; isPassed: 
  * shadow (`--color-slider-from/to/border`, the `.sheen-track` utility) are
  * unchanged from the old design and were already byte-correct; only the
  * knob, the tick colors/geometry, the label colors/weights, and (for
- * `segments={5}`) a new "Lowest"/"Highest" caption row are new here.
+ * `segments={5}`) a new "A little"/"Very intense" caption row (review fix
+ * — was "Lowest"/"Highest") are new here.
  *
  * Like the old knob, the fill only ever renders once the slider has been
  * interacted with (`hasInteracted`) — the `active` prop still just gates
@@ -275,7 +304,7 @@ export function IntensitySlider({
               'sheen sheen-track pointer-events-none absolute inset-y-0 left-0 border border-solid border-slider-border bg-[linear-gradient(180deg,var(--color-slider-fill-from),var(--color-slider-to))]',
               isFull ? 'rounded-pill' : 'rounded-l-pill rounded-r-[4px]',
             )}
-            style={{ width: fillWidthForMark(currentMarkIndex, config.markCount), transition: 'width 200ms ease-out' }}
+            style={{ width: fillWidthForMark(currentMarkIndex, config.markCount, config.accentMarkIndexes), transition: 'width 200ms ease-out' }}
           />
         )}
 

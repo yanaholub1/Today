@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CaretDown, Circle, CircleHalf } from '@phosphor-icons/react'
+import { CaretDown, Circle, CircleHalfTilt } from '@phosphor-icons/react'
 import { TaskFlowHeader } from '../../components/TaskFlowHeader'
 import { GradientActionButton } from '../../components/GradientActionButton'
 import { NotesField } from '../../components/NotesField'
@@ -48,11 +48,13 @@ const PROGRESS_UNFILLED = 'rgba(244,38,110,0.2)'
  * `FeelBetterSheet`'s own Yes/"Not really" pill recipe otherwise exactly —
  * a real style change from the earlier `ChoiceChip` card-shaped pair. Its
  * icon is Phosphor's `Circle` for "Yes" (`weight="fill"`, a solid disc)
- * and `CircleHalf` for "Not really" (`weight="fill"`, a half-filled disc
- * — explicit direct correction against 335:2740, replacing an earlier
- * `Circle weight="bold"` thick-ring guess; same swap applied everywhere
- * else this "Not really" glyph appears, see PatternsScreen.tsx's "How it
- * went" card), and both share the same 2-color pair regardless of
+ * and `CircleHalfTilt` for "Not really" (`weight="fill"` — review fix,
+ * verified against node 363:11766, was `CircleHalf`'s plain half-filled
+ * disc; same swap applied everywhere else this "Not really"/`glad ===
+ * false` glyph appears — DayDetailScreen's own outcome row and
+ * PatternsScreen.tsx's "How it went" card — each keeping its own existing
+ * size, this fix only swaps the glyph), and both share the same 2-color
+ * pair regardless of
  * which option — unselected `#353d4f`, selected `#6d0e2d` (the latter
  * already an established app color, reused verbatim). The surrounding
  * pill's own colors/shadow (`THUMB_UNSELECTED`/`THUMB_SELECTED`/
@@ -193,7 +195,7 @@ export function EveningReflectionFlow() {
             className="focus-ring pressable flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
             style={{ ...(draft.glad === false ? THUMB_SELECTED : THUMB_UNSELECTED), boxShadow: THUMB_SHADOW }}
           >
-            <CircleHalf size={20} weight="fill" style={{ color: draft.glad === false ? '#6d0e2d' : '#353d4f' }} />
+            <CircleHalfTilt size={20} weight="fill" style={{ color: draft.glad === false ? '#6d0e2d' : '#353d4f' }} />
             <span className="font-sans text-base font-medium" style={{ color: draft.glad === false ? '#6d0e2d' : '#2f374a' }}>
               Not really
             </span>
@@ -206,11 +208,11 @@ export function EveningReflectionFlow() {
             <button
               type="button"
               onClick={() => setReasonSheetOpen(true)}
-              className="focus-ring pressable flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c] pr-4 pl-1"
+              className="focus-ring pressable flex h-14 w-full shrink-0 items-center justify-between rounded-pill border border-solid border-[#6d6b7c]/60 pr-4 pl-1"
             >
               {selectedTag ? (
                 <span
-                  className="flex h-[44px] items-center justify-center rounded-pill border border-solid border-[#eac3d0] bg-[#fae1e9] py-3 pr-3.5 pl-2.5"
+                  className="flex h-12 items-center justify-center rounded-pill border border-solid border-[#eac3d0] bg-[#fae1e9] pr-3.5 pl-2.5"
                   style={{ boxShadow: 'inset 0 -2px 3px rgba(0,0,0,0.05), inset 0 3px 3px rgba(255,255,255,0.4)' }}
                 >
                   <span className="font-sans text-base font-medium whitespace-nowrap text-[#6d0e2d]">{reflectionTagLabel(selectedTag, draft.glad)}</span>

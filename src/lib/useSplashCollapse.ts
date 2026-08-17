@@ -34,7 +34,7 @@ export interface UseSplashCollapseOptions {
   centerYOffset?: number
   /** How long the giant circle sits at full size before collapsing. Default 200. */
   holdMs?: number
-  /** Collapse duration (giant → resting size/position). Default 950. */
+  /** Collapse duration (giant → resting size/position). Default 850. */
   collapseMs?: number
   /** Drop distance (px) for the post-collapse bounce, via the `--splash-bounce-drop` custom property consumed by `.splash-circle-bounce` (index.css). Default 12. */
   bounceDropPx?: number
@@ -101,7 +101,7 @@ export function useSplashCollapse({
   gradient,
   centerYOffset = 0,
   holdMs = 200,
-  collapseMs = 950,
+  collapseMs = 850,
   bounceDropPx = 12,
   revealMs,
   onMeasured,
@@ -199,8 +199,18 @@ export function useSplashCollapse({
       circle.style.transform = `translate(${giantCenterX - freshCenterX}px, ${giantCenterY - freshCenterY}px)`
       void circle.offsetHeight // flush the correction above before the transition below, same reasoning as the initial giant setup
 
+      // Review fix — cubic-bezier(0.16, 1, 0.3, 1) ("expo out") dumps nearly
+      // all its deceleration into the first ~20% of `collapseMs`, then
+      // coasts almost flat for the rest: the circle reads as already
+      // stopped well before the transition timer actually fires, so the
+      // very next thing on the clock — `bounceTimer`'s drop-and-bounce,
+      // below — lands as a sudden new snap of motion rather than a
+      // continuation of the same settle. cubic-bezier(0.33, 1, 0.68, 1)
+      // ("cubic out") spreads its deceleration more evenly across the
+      // whole duration instead — same monotonic ease-out shape, no
+      // overshoot, just a softer, more continuous landing into the bounce.
       const freshRestScale = freshRect.width / SPLASH_CIRCLE_BASE_PX
-      const transition = `transform ${collapseMs}ms cubic-bezier(0.16, 1, 0.3, 1)`
+      const transition = `transform ${collapseMs}ms cubic-bezier(0.33, 1, 0.68, 1)`
       circle.style.transition = transition
       circle.style.transform = 'translate(0, 0)'
       circleFill.style.transition = transition

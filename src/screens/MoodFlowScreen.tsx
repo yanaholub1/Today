@@ -34,7 +34,7 @@ const QUADRANT_FILTER_ITEMS: SegmentedFilterPillItem[] = MOOD_QUADRANTS.map((q) 
 const STEP_TITLE: Record<MoodStep, string> = {
   quadrant: 'Check in on your mood',
   emotion: 'Which emotion fits best?',
-  intensity: 'How strong is it?',
+  intensity: 'How intense is it?',
   technique: 'Recommended practices',
   success: '',
 }
@@ -64,8 +64,9 @@ function intensityFromSliderValue(value: number): number {
  * inside its own `gap-4` (16px) wrapper — explicit direct request, kept
  * separate from the screen's own `gap-6` rhythm above it.
  *
- * The intensity screen (title "How strong is it?", verified against
- * 217:15068) is now its OWN screen, split back out of the emotion screen
+ * The intensity screen (title "How intense is it?" — review fix, was
+ * "How strong is it?", 217:15068's own verified copy) is now its OWN
+ * screen, split back out of the emotion screen
  * per explicit correction — it recaps `EmotionExplanationCard`, then the
  * 5-segment `IntensitySlider`, then `NotesField` (verified against
  * 142:1885), then two CTAs: primary "What might help?" (→ technique
@@ -226,14 +227,15 @@ export function MoodFlowScreen() {
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pt-4 [scrollbar-gutter:stable]">
             {emotionSearchOpen ? (
               <>
-                <div className="flex w-full items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c] bg-white px-4 pt-[14px] pb-[13px]">
+                {/* h-14 (56px), no vertical padding — review fix, was pt-[14px]/pb-[13px] driven, matching every other input field's own fixed-height/zero-padding treatment. border-[#6d6b7c]/60 — review fix, default-state stroke opacity reduced app-wide (same value at both this search field's own instances below). */}
+                <div className="flex h-14 w-full shrink-0 items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c]/60 bg-white px-4">
                   <MagnifyingGlass size={24} className="shrink-0 text-ink/70" />
                   <input
                     type="text"
                     value={emotionSearchQuery}
                     onChange={(e) => setEmotionSearchQuery(e.target.value)}
                     placeholder="Search a feeling"
-                    className="focus-ring-field w-full bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
+                    className="focus-ring-field w-full rounded-[8px] bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
                     autoFocus
                   />
                 </div>
@@ -292,14 +294,14 @@ export function MoodFlowScreen() {
                 <p className="font-sans text-base font-medium text-ink/60">Or</p>
                 <div className="h-px flex-1 bg-ink/15" />
               </div>
-              <div className="flex w-full items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c] bg-white px-4 pt-[14px] pb-[13px]">
+              <div className="flex h-14 w-full shrink-0 items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c]/60 bg-white px-4">
                 <MagnifyingGlass size={24} className="shrink-0 text-ink/70" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search a feeling"
-                  className="focus-ring-field w-full bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
+                  className="focus-ring-field w-full rounded-[8px] bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
                 />
               </div>
               {trimmedQuery && (

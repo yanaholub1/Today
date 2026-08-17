@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CompletionSummaryCard } from '../components/CompletionSummaryCard'
 import type { DayLog, IntentionLog } from '../components/CompletionSummaryCard'
+import { DaySummaryCard } from '../components/DaySummaryCard'
 import { HomeHeader } from '../components/HomeHeader'
 import { SecondaryNav } from '../components/SecondaryNav'
 import type { SecondaryNavSection } from '../components/SecondaryNav'
@@ -12,11 +13,10 @@ import { useAuth } from '../lib/authStore'
 import { fetchPastDayBundles } from '../lib/dayLogHistory'
 import type { DayBundle } from '../lib/dayLogHistory'
 import { getGreeting } from '../lib/greeting'
+import { getDisplayName } from '../lib/displayName'
 import { QUADRANT_TO_MOOD_CATEGORY } from '../lib/moodCategories'
+import { cn } from '../lib/cn'
 import type { DayDetailNavState } from './DayDetailScreen'
-
-// Mock — real name needs a `profiles` table, out of scope for Stage 6 (see today_app_brief.md's own "nice-to-have"). Matches HomeHeader's own mock name in CheckInScreen.
-const MOCK_USER_NAME = 'Yana'
 
 const TODAY = new Date()
 
@@ -110,6 +110,27 @@ export function EntriesScreen() {
     gladAboutDay: reflectedIntentions.length > 0 ? reflectedIntentions.every((intention) => intention.glad === true) : undefined,
     moodCheckIns: moodCheckIns.map((m) => ({ id: m.id, emotion: m.emotion, categoryId: QUADRANT_TO_MOOD_CATEGORY[m.quadrant] })),
   }
+  // Review fix — same derivation CheckInScreen already uses: a truly empty
+  // today (no intention, no mood check-ins) renders DaySummaryCard's
+  // dashed "What's on your mind today?" card below, not
+  // CompletionSummaryCard — this screen used to always render the latter
+  // unconditionally, which is what let "Not set yet" show up alone as a
+  // stand-in for true emptiness (see CompletionSummaryCard's own doc
+  // comment for the other half of this fix).
+  const hasDayContent = !!todayLog.intention || todayLog.moodCheckIns.length > 0
+  // Review fix — same two-height distinction CheckInScreen's own Today
+  // card already makes (`isCompleteEmpty`): a device that has NEVER
+  // logged anything gets the big, flex-1 empty-state card; once real
+  // history exists (even if today itself is still empty) the card hugs
+  // its own content instead. `pastLogs` is already fetched above for the
+  // month-section list below, so this is free — no new query. Before this
+  // fix, this screen's own Today card had no such distinction at all
+  // (always natural-height), which is what made it visibly SHRINK
+  // relative to CheckInScreen's own big card the moment a user navigated
+  // here (e.g. Patterns → Journal) while genuinely having zero entries
+  // ever — two screens showing the same conceptual empty state at two
+  // different sizes.
+  const isCompleteEmpty = !hasDayContent && pastLogs.length === 0
 
   const openTodayDetail = () => {
     const detailState: DayDetailNavState = {
@@ -134,8 +155,8 @@ export function EntriesScreen() {
   }
 
   return (
-    <div className="flex min-h-full flex-col pb-8">
-      <HomeHeader greeting={`${getGreeting()}, ${MOCK_USER_NAME}`} onSettingsClick={() => navigate('/settings')} onProfileClick={() => navigate('/profile')} />
+    <div className={cn('flex min-h-full flex-col', !isCompleteEmpty && 'pb-8')}>
+      <HomeHeader greeting={getGreeting(getDisplayName())} onSettingsClick={() => navigate('/settings')} onProfileClick={() => navigate('/profile')} />
 
       <div className="flex flex-1 flex-col px-5">
         {/* self-start — the switcher should hug its own content width, not stretch to the row's full width the way a flex-column child does by default. */}
@@ -143,8 +164,17 @@ export function EntriesScreen() {
 
         {/* text-lg (18px), not text-xl (20px) — explicit direct correction, applies to every section title on this screen (Today + month headers). */}
         <h1 className="mt-5 font-serif text-lg text-ink">Today</h1>
-        <div className="mt-3">
-          <CompletionSummaryCard {...todayLog} context="today" onClick={openTodayDetail} />
+        <div className={cn('mt-3', isCompleteEmpty && 'flex flex-1 flex-col')}>
+          {hasDayContent ? (
+            <CompletionSummaryCard {...todayLog} context="today" onClick={openTodayDetail} />
+          ) : isCompleteEmpty ? (
+            // Same flex-1/mb-[77px] FAB-clearance mechanism as CheckInScreen's
+            // own complete-empty card — see this screen's own `isCompleteEmpty`
+            // doc comment above.
+            <DaySummaryCard className="mb-[77px] flex-1" />
+          ) : (
+            <DaySummaryCard className="h-[166px]" />
+          )}
         </div>
 
         {monthSection && (

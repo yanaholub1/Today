@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GradientActionButton } from '../components/GradientActionButton'
+import { AppWordmark } from '../components/AppWordmark'
 import { cn } from '../lib/cn'
-import { useThemeColor } from '../lib/useThemeColor'
 import { useSplashCollapse } from '../lib/useSplashCollapse'
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion'
 import { ONBOARDING_SPLASH_GRADIENT } from '../lib/splashGradients'
-import wordmarkDot from '../assets/OnboardingWordmarkDot.png'
+import { markOnboardingComplete } from '../lib/onboardingFlag'
 import noticeIcon from '../assets/OnboardingNotice.png'
 import connectIcon from '../assets/OnboardingConnect.png'
 import patternsIcon from '../assets/OnboardingPatterns.png'
@@ -28,17 +29,6 @@ const FEATURES = [
 // comment) lands in lockstep with these letters, and so the hook's final
 // overlay-unmount lands exactly when this finishes, not before or after.
 const SPLASH_LETTERS_MS = 400
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const onChange = () => setReduced(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return reduced
-}
 
 /**
  * First-run onboarding — verified against node 342:5555 via get_design_context
@@ -71,13 +61,23 @@ function usePrefersReducedMotion(): boolean {
  * already confirmed for MorningIntentionFlow/MoodFlowScreen, so this is
  * pure reuse, not a new button.
  *
- * "Sign in": registration is now REQUIRED (review fix) — every gated
- * route redirects here first if the user isn't registered, so there's no
- * "skip onboarding and enter the app" path anymore regardless of which
- * button is tapped. With no real sign-in flow built yet (Stage 6), this
- * link still does exactly what "Get started" does (routes to
- * `/register`) rather than guessing at a future auth flow — same open
- * question as before, just one step further down the chain now.
+ * "Get started" goes straight into the app now, no auth step (review
+ * fix — auth PAUSED, not removed): Supabase's email-sending rate limit
+ * was blocking testing of the real signUp()/signInWithPassword() flow
+ * (SignUpScreen.tsx/SignInScreen.tsx, both still fully intact), so entry
+ * is decided by a local "has this device completed onboarding before"
+ * flag instead (`onboardingFlag.ts`) — see App.tsx's own `RootRoute` doc
+ * comment for the full reasoning. `handleGetStarted` below claims that
+ * flag then navigates straight to `/checkin`.
+ *
+ * Review fix: the "Sign in" link is now REMOVED from this screen (was
+ * previously left in place, unchanged, routing to `/sign-in`) — there's no
+ * registration flow left for it to lead into. `/sign-in`, `SignInScreen.tsx`,
+ * and `authStore.tsx`'s `signInWithPassword` remain fully intact and
+ * dormant, same "paused not deleted" treatment as the rest of the auth
+ * system (see this file's own note above on "Get started" skipping auth
+ * entirely) — only this screen's own visible entry point into it is gone,
+ * `/sign-in` is still reachable by direct URL.
  *
  * Layout is adapted from the mock's absolute positioning (a fixed 842px
  * iPhone frame) into a flexible column: wordmark pinned near the top,
@@ -162,26 +162,11 @@ export function OnboardingScreen() {
 
   const dotRef = useRef<HTMLImageElement>(null)
 
-  // `index.html`'s `theme-color` (and the manifest's matching `theme_color`)
-  // is white, to match the plain white background every OTHER screen uses —
-  // this is the one screen with a colored background instead (the diagonal
-  // wash below), so it swaps the browser/OS chrome color to match its own
-  // top edge for the duration it's mounted, restoring whatever value was
-  // there before on unmount. `#ffdcf5` is the same sampled top-corner value
-  // already cited above (this screen's own doc comment), not a new color.
-  //
-  // Review fix: kept even after adding the `viewport-fit=cover` +
-  // safe-area-inset extension above — the two aren't solving the same
-  // problem twice. This meta tag colors chrome the app's own content can
-  // never reach: Safari's address-bar/toolbar in regular (non-standalone)
-  // browsing, and (per platform behavior that needs a real device to
-  // fully confirm) the reserved status-bar fill some standalone/home-screen
-  // contexts still use before layout/paint has run. The safe-area
-  // extension above covers the opposite case: this screen's OWN gradient
-  // painting under the notch once it's allowed to. Belt and suspenders,
-  // not redundant — dropping either one re-opens a seam the other doesn't
-  // cover.
-  useThemeColor('#ffdcf5')
+  // `theme-color` (status-bar/toolbar chrome color) is no longer this
+  // screen's own concern — review fix, see `App.tsx`'s own
+  // `ThemeColorByRoute` doc comment for why that moved to a single
+  // route-driven controller instead of each pink-needing screen managing
+  // it (and resetting it) itself.
 
   const { circleRef, circleFillRef, showSplashCircle } = useSplashCollapse({
     active: !reducedMotion,
@@ -193,11 +178,14 @@ export function OnboardingScreen() {
     onDone: () => setContentVisible(true),
   })
 
-  const finishOnboarding = () => navigate('/register')
+  const handleGetStarted = () => {
+    markOnboardingComplete()
+    navigate('/checkin')
+  }
 
   // Container's `pb-[max(24px,env(safe-area-inset-bottom))]` below (review
   // fix): the old flat `pb-6` (24px) predates `viewport-fit=cover` going
-  // global — this screen's own "Get started"/"Sign in" pair is the true
+  // global — this screen's own "Get started" CTA is the true
   // bottom-of-screen content, now exposed to the same home-indicator gap
   // that flag opened up everywhere else. `max()` keeps the original 24px
   // as the floor on non-notched devices, same pattern as the top padding
@@ -207,7 +195,7 @@ export function OnboardingScreen() {
   // is fixed to the LARGEST possible viewport (toolbar fully collapsed),
   // even while the toolbar is currently showing and less is genuinely
   // visible — so this container used to render taller than what was
-  // actually on screen, pushing "Sign in" behind the toolbar until the
+  // actually on screen, pushing the bottom CTA behind the toolbar until the
   // page itself was scrolled (which is what collapses the toolbar).
   // `100dvh` tracks the CURRENTLY visible viewport instead, so the
   // container is never taller than what's really on screen and this
@@ -224,31 +212,17 @@ export function OnboardingScreen() {
       {/*
         `wordmarkVisible` fades "t"/"day" in, plain opacity, no transform
         — see this file's own doc comment above for why they're never
-        measured or moved anymore. `duration-400 ease-out` must match
-        `SPLASH_LETTERS_MS`/the curve `useSplashCollapse` uses for the
-        dot's own fade (that hook's own doc comment) — that's what makes
-        dot and letters read as one wordmark fading in together rather
-        than two separately-timed pieces.
+        measured or moved anymore. `duration-400 ease-out` (AppWordmark's
+        own) must match `SPLASH_LETTERS_MS`/the curve `useSplashCollapse`
+        uses for the dot's own fade (that hook's own doc comment) — that's
+        what makes dot and letters read as one wordmark fading in together
+        rather than two separately-timed pieces. `useSplashCollapse`
+        measures the dot `<img>` directly (it's the `targetRef`, forwarded
+        via `dotRef`), so the splash animation's landing spot picks up
+        AppWordmark's own layout automatically — one source of truth,
+        nothing to keep in sync by hand.
       */}
-      <div className={cn('flex items-center justify-center transition-opacity duration-400 ease-out', wordmarkVisible ? 'opacity-100' : 'opacity-0')}>
-        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">t</span>
-        {/*
-          45×45 source (3x), displayed at 15×15 — a clean square crop of
-          just the circle, see this file's own doc comment above.
-          `translate-y-[2px]`: the circle's own visual center sits slightly
-          above the "t"/"day" letters' vertical center at this font size
-          (review fix, tuned down from an initial +5px per feedback) —
-          nudged down to align, without touching the letters' own
-          position. `useSplashCollapse` measures this element's OWN rect
-          directly (it's the `targetRef`), so the splash animation's
-          landing spot picks up this same offset automatically — one
-          source of truth, nothing to keep in sync by hand. Its own
-          opacity is driven by the hook, not by `wordmarkVisible` above —
-          see that hook's own doc comment for why it's kept separate.
-        */}
-        <img ref={dotRef} src={wordmarkDot} alt="" className="h-[15px] w-[15px] translate-y-[2px]" />
-        <span className="font-serif text-[28px] tracking-[-0.56px] text-[#1c212c]">day</span>
-      </div>
+      <AppWordmark dotRef={dotRef} visible={wordmarkVisible} />
 
       {/*
         Both gaps below are `clamp(MIN, slope·1vh + offset, MAX)`, not a
@@ -257,8 +231,8 @@ export function OnboardingScreen() {
         real viewport its own intrinsic content height simply won't
         shrink to fit `flex-1`'s available space — it overflows instead,
         `h-dvh` alone can't prevent that (confirmed via direct
-        measurement, not assumed: at a 600px-tall viewport, "Sign in" ran
-        30px past the bottom edge even with a correctly-sized container).
+        measurement, not assumed: at a 600px-tall viewport, the bottom CTA
+        ran 30px past the bottom edge even with a correctly-sized container).
         `MAX` in each is this screen's own original value (2.5rem=40px,
         2rem=32px) — the exact number Figma verified — so on any
         reasonably tall device nothing changes at all; `MIN` (1rem, 0.75rem)
@@ -287,10 +261,7 @@ export function OnboardingScreen() {
       </div>
 
       <div className={cn('flex flex-col gap-4 transition-opacity duration-300', contentVisible ? 'opacity-100' : 'opacity-0')}>
-        <GradientActionButton onClick={finishOnboarding}>Get started</GradientActionButton>
-        <button type="button" onClick={finishOnboarding} className="focus-ring pressable font-sans text-lg font-semibold text-[#e90555]">
-          Sign in
-        </button>
+        <GradientActionButton onClick={handleGetStarted}>Get started</GradientActionButton>
       </div>
 
       {showSplashCircle && (

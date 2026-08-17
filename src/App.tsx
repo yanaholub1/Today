@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import TokenPreview from './TokenPreview'
@@ -6,7 +6,9 @@ import ComponentLibraryPreview from './ComponentLibraryPreview'
 import { TabLayout } from './layouts/TabLayout'
 import { FlowLayout } from './layouts/FlowLayout'
 import { OnboardingScreen } from './screens/OnboardingScreen'
-import { RegistrationScreen } from './screens/RegistrationScreen'
+import { ReturningUserLoadingScreen } from './screens/ReturningUserLoadingScreen'
+import { SignUpScreen } from './screens/SignUpScreen'
+import { SignInScreen } from './screens/SignInScreen'
 import { CheckInScreen } from './screens/CheckInScreen'
 import { EntriesScreen } from './screens/EntriesScreen'
 import { PatternsScreen } from './screens/PatternsScreen'
@@ -15,11 +17,12 @@ import { ProfileScreen } from './screens/ProfileScreen'
 import { IntentionFlowScreen } from './screens/IntentionFlowScreen'
 import { MoodFlowScreen } from './screens/MoodFlowScreen'
 import { DayDetailScreen } from './screens/DayDetailScreen'
-import { DayLogStoreProvider, useDayLogStore } from './lib/dayLogStore'
+import { DayLogStoreProvider } from './lib/dayLogStore'
 import { AuthProvider, useAuth } from './lib/authStore'
 import { useThemeColor } from './lib/useThemeColor'
 import { CHECKIN_FAB_SPLASH_GRADIENT, ONBOARDING_SPLASH_GRADIENT } from './lib/splashGradients'
 import { peekFirstLoadSplashAvailable } from './lib/firstLoadSplash'
+import { hasCompletedOnboarding } from './lib/onboardingFlag'
 
 /**
  * Shown only for the brief window before Supabase's initial `getSession()`
@@ -72,10 +75,12 @@ function hasPersistedSupabaseSession(): boolean {
  * — unlike the signed-out branch (which is allowed to replay, matching
  * `OnboardingScreen`'s own on-revisit behavior), the check-in FAB's own
  * landing animation is a true first-load-only thing (`firstLoadSplash.ts`).
- * `RequireRegistration` can render this screen again later in a session
- * (its `dayLogLoading` branch), and by then the FAB's own splash has
- * already played and has nothing left to hand off to — showing the circle
- * again there would be a flash with no landing, not a real loading beat.
+ *
+ * Review fix: this component is now only ever reached via
+ * `RedirectIfRegistered` (the dormant `/sign-up`/`/sign-in` routes — see
+ * `RootRoute`'s own doc comment for why the primary flow no longer goes
+ * through it at all) — its own doc comment there covers this screen's
+ * current, narrower role; nothing else to update here.
  */
 function AuthLoadingScreen() {
   const [pink] = useState(() => !hasPersistedSupabaseSession())
@@ -108,58 +113,112 @@ function AuthLoadingScreen() {
 }
 
 /**
+ * Single source of truth for `theme-color` across the whole app — review
+ * fix: this used to be each pink-needing screen's own job (`OnboardingScreen`,
+ * later `ReturningUserLoadingScreen` too) calling `useThemeColor('#ffdcf5')`
+ * itself and relying on ITS OWN unmount to reset back to white. That broke
+ * the moment a route could reach a non-splash screen WITHOUT ever mounting
+ * the one component whose unmount did the resetting — exactly what
+ * happened when the returning-user `/loading` path was added: it's a
+ * DIFFERENT component from `OnboardingScreen`, so `OnboardingScreen`'s own
+ * reset logic never ran for that path, leaving the pink splash default
+ * (`index.html`'s own static `<meta>` value) stuck for the rest of the
+ * session. Rather than also patching `ReturningUserLoadingScreen` (and
+ * every future splash-like screen after it), theme-color is now driven
+ * purely by the CURRENT ROUTE, decided in exactly one place: pink for
+ * `/onboarding`/`/loading`, white for literally everything else,
+ * regardless of which component happens to be mounted or how the user got
+ * there. `OnboardingScreen`/`ReturningUserLoadingScreen` no longer call
+ * `useThemeColor` themselves — this component is now the only caller for
+ * both.
+ *
+ * Deliberately does NOT cover `/sign-up`/`/sign-in` — `AuthLoadingScreen`
+ * below still owns its own SPECULATIVE pink/white guess there (based on
+ * `hasPersistedSupabaseSession()`, not just the route), which this
+ * component's own plain white default for "every other route" would
+ * otherwise fight over the same meta tag. Rendered as an early sibling of
+ * `<Routes>` (not nested inside it) specifically so React's own
+ * children-before-parent/earlier-sibling-before-later effect ordering
+ * settles this route's color FIRST, before `AuthLoadingScreen`'s own
+ * (deeper, later) effect — letting AuthLoadingScreen's own more specific
+ * guess win for as long as it's mounted, with no explicit coordination
+ * needed between the two.
+ */
+const SPLASH_THEME_COLOR = '#ffdcf5'
+const SPLASH_ROUTES = new Set(['/onboarding', '/loading'])
+
+function ThemeColorByRoute() {
+  const { pathname } = useLocation()
+  useThemeColor(SPLASH_ROUTES.has(pathname) ? SPLASH_THEME_COLOR : undefined)
+  return null
+}
+
+/**
  * `/` no longer renders a screen of its own (`CheckInGateScreen`, the old
  * mandatory full-screen hero-card gate, was removed entirely per Fix 30 —
  * the floating tab-bar button, via `CheckInMenuSheet`, is now the app's
  * only entry point into either flow). `/` is now a pure redirect: into
- * `/checkin` once signed in, into `/onboarding` otherwise. Needs to live
- * inside `AuthProvider` to read auth state, which is why it's a component
- * here rather than a plain ternary in `<Routes>` (that provider wraps
- * `<Routes>`, not the other way around) — same reasoning the old
- * `isRegistered`-based version of this component had.
+ * `/checkin` once this device has completed onboarding, into
+ * `/onboarding` otherwise.
+ *
+ * Review fix — auth PAUSED, not removed: this used to redirect on
+ * `useAuth()`'s real Supabase `status` (async, hence `AuthLoadingScreen`
+ * while it resolved). Real accounts are on hold for now (Supabase's
+ * email-sending rate limit was blocking testing) — entry is decided by
+ * `hasCompletedOnboarding()` instead, a plain synchronous localStorage
+ * read (`onboardingFlag.ts`), so there's no async window to fill with a
+ * loading screen here anymore; the redirect just happens immediately.
+ * `authStore.tsx`/`SignUpScreen`/`SignInScreen` are untouched and still
+ * fully reachable at `/sign-up`/`/sign-in` (still gated by real auth, via
+ * `RedirectIfRegistered` below) — this only changes how the PRIMARY entry
+ * path decides where to send a visitor, not whether the auth system
+ * itself still works if reached directly.
+ *
+ * Review fix — returning visitors now land on `/loading` (was
+ * `/checkin` directly): see `ReturningUserLoadingScreen`'s own doc
+ * comment for what plays there and why. New (never-onboarded) visitors
+ * are unaffected — still `/onboarding`, unchanged.
  */
 function RootRoute() {
-  const { status } = useAuth()
-  if (status === 'loading') return <AuthLoadingScreen />
-  return <Navigate to={status === 'signedIn' ? '/checkin' : '/onboarding'} replace />
+  return <Navigate to={hasCompletedOnboarding() ? '/loading' : '/onboarding'} replace />
 }
 
 /**
- * Route guard for every screen that requires a signed-in user — Check-in,
- * Journal, Patterns, both task flows, the day-detail view, settings,
- * profile. Wraps the `TabLayout`/`FlowLayout` route groups as a single
- * outer layout route (no path of its own) rather than gating each leaf
- * route individually, so a new gated route added later just needs to sit
- * inside one of those two groups to be covered automatically. Stage 6
- * (Supabase/magic-link auth) swapped the old mock `isRegistered` flag for
- * real `useAuth()` status here — confirmed this guard's own shape didn't
- * need a rework, just a different source for the boolean, per the plan.
+ * Route guard for every screen that requires onboarding to be complete —
+ * Check-in, Journal, Patterns, both task flows, the day-detail view,
+ * settings, profile. Wraps the `TabLayout`/`FlowLayout` route groups as a
+ * single outer layout route (no path of its own) rather than gating each
+ * leaf route individually, so a new gated route added later just needs
+ * to sit inside one of those two groups to be covered automatically.
  *
- * Also waits on `dayLogStore`'s own `loading` flag before rendering the
- * app: without this, a screen could mount for one render with today's
- * data still empty (the fetch kicked off by the just-resolved `userId`
- * hasn't returned yet), which is enough for `IntentionFlowScreen`'s
- * once-at-mount `deriveIntentionState` gate to freeze on the wrong state.
- * Gating here, once, is simpler than threading a loading check into every
- * individual screen.
+ * Review fix — replaces the old auth-based `RequireRegistration` (real
+ * `useAuth()` status + a wait on `dayLogStore`'s own `loading` flag):
+ * with no real sign-in in the primary flow anymore, `dayLogStore` always
+ * has a `null` userId here, which it already handles as an intentional,
+ * immediately-resolved empty state (no fetch to wait for, see that
+ * file's own `useEffect`) — so there's no more async loading window to
+ * gate on, and this reduces to the same plain synchronous
+ * `hasCompletedOnboarding()` check `RootRoute` uses. Concretely: Check-in/
+ * Journal/Patterns will render with no data and silently no-op on save
+ * while this is the active flow (every write in `dayLogStore.tsx` already
+ * early-returns on a `null` userId) — expected while auth is paused, not
+ * a bug, but worth knowing if something looks like it "didn't save."
  */
-function RequireRegistration() {
-  const { status } = useAuth()
-  const { loading: dayLogLoading } = useDayLogStore()
-  if (status === 'loading') return <AuthLoadingScreen />
-  if (status === 'signedOut') return <Navigate to="/onboarding" replace />
-  if (dayLogLoading) return <AuthLoadingScreen />
+function RequireOnboarded() {
+  if (!hasCompletedOnboarding()) return <Navigate to="/onboarding" replace />
   return <Outlet />
 }
 
 /**
- * Inverse guard for onboarding/registration themselves — once a user IS
- * signed in, reaching either of these routes again this session (e.g. a
- * stale bookmark, or tapping back) should land them back in the app, not
- * show the first-run flow a second time. Kept out of `OnboardingScreen`/
- * `RegistrationScreen` themselves (neither screen was meant to own this
- * check — see each screen's own doc comment) so both stay pure UI, no
- * store reads of their own beyond what they already need to submit.
+ * Inverse guard for the DORMANT `/sign-up`/`/sign-in` routes — unchanged
+ * from before this file's onboarding-flag review fix (see `RootRoute`'s
+ * own doc comment): still real, async `useAuth()` status, still exactly
+ * what it did when these were the primary entry path. `/onboarding`
+ * itself no longer uses this — see `RedirectIfOnboarded` below, its
+ * flag-based counterpart — since sign-up/sign-in are reached only if
+ * someone navigates there directly (nothing in the primary flow links to
+ * them anymore); if auth is ever turned back into the primary flow, this
+ * guard doesn't need to change, only what wraps it.
  */
 function RedirectIfRegistered({ children }: { children: ReactNode }) {
   const { status } = useAuth()
@@ -167,32 +226,83 @@ function RedirectIfRegistered({ children }: { children: ReactNode }) {
   return status === 'signedIn' ? <Navigate to="/checkin" replace /> : <>{children}</>
 }
 
+/**
+ * Flag-based counterpart to `RedirectIfRegistered`, wrapping `/onboarding`
+ * itself now (review fix — that used to be `RedirectIfRegistered` too,
+ * before auth was paused as the primary flow's own gate; see
+ * `RootRoute`'s doc comment for the full reasoning). Once this device HAS
+ * completed onboarding, landing back on `/onboarding` (a stale bookmark,
+ * tapping back, etc.) should skip straight back into the app, same
+ * "don't show the first-run flow twice" intent as before, just driven by
+ * the local flag instead of a real session.
+ *
+ * Review fix — Settings' own "Replay onboarding" needs to reach this same
+ * route while the flag is (necessarily) already set, without the flag
+ * itself changing (the next cold start must still skip straight to
+ * `/checkin`). `navigate('/onboarding', { state: { replay: true } })`
+ * marks that one navigation as an explicit replay via router location
+ * state rather than a URL/localStorage change, so a stale bookmark or the
+ * back button — anything that lands here WITHOUT that state — still
+ * redirects away exactly as before.
+ */
+function RedirectIfOnboarded({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const isReplay = (location.state as { replay?: boolean } | null)?.replay === true
+  if (isReplay) return <>{children}</>
+  return hasCompletedOnboarding() ? <Navigate to="/checkin" replace /> : <>{children}</>
+}
+
 function App() {
   return (
     <AuthProvider>
       <DayLogStoreProvider>
+        <ThemeColorByRoute />
         <Routes>
           <Route path="/" element={<RootRoute />} />
-          {/* Bare routes, no layout — neither needs the tab bar or a task-flow header, each owns its whole viewport. Guarded by RedirectIfRegistered so a returning signed-in user skips straight back into the app. */}
+          {/* Bare route, no layout — doesn't need the tab bar or a task-flow header, owns its whole viewport. Guarded by RedirectIfOnboarded so a returning visitor skips straight back into the app. */}
           <Route
             path="/onboarding"
             element={
-              <RedirectIfRegistered>
+              <RedirectIfOnboarded>
                 <OnboardingScreen />
+              </RedirectIfOnboarded>
+            }
+          />
+          {/*
+            DORMANT (review fix): real Supabase email/password auth,
+            unhooked from the primary entry flow rather than deleted —
+            see RootRoute's own doc comment for why, and note the
+            resulting gap: nothing in the primary flow links here
+            anymore, and a successful sign-in/sign-up no longer
+            auto-navigates anywhere on its own, since the routing that
+            used to do that (watching real auth `status`) has been
+            replaced by the onboarding flag for the primary flow. Still
+            fully reachable by URL, still real Supabase calls, still
+            gated by RedirectIfRegistered exactly as before — untouched,
+            just not part of any button's own navigation anymore.
+          */}
+          <Route
+            path="/sign-up"
+            element={
+              <RedirectIfRegistered>
+                <SignUpScreen />
               </RedirectIfRegistered>
             }
           />
           <Route
-            path="/register"
+            path="/sign-in"
             element={
               <RedirectIfRegistered>
-                <RegistrationScreen />
+                <SignInScreen />
               </RedirectIfRegistered>
             }
           />
 
-          {/* Everything below requires a signed-in user — see RequireRegistration above. */}
-          <Route element={<RequireRegistration />}>
+          {/* Everything below requires onboarding to be complete — see RequireOnboarded above. */}
+          <Route element={<RequireOnboarded />}>
+            {/* Bare route, same reasoning as /onboarding above — its own screen owns the whole viewport, no tab bar/flow header. */}
+            <Route path="/loading" element={<ReturningUserLoadingScreen />} />
+
             {/* Tab screens — BottomNav is part of this layout, present the whole time. */}
             <Route element={<TabLayout />}>
               <Route path="/checkin" element={<CheckInScreen />} />

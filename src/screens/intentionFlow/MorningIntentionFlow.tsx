@@ -69,14 +69,15 @@ function IntentionProgressBar({ step, hasSavedIntention }: { step: 'details' | '
  *    two are scoped separately now: the recap pill is a read-only summary
  *    of an already-saved intention, the trigger is still live picker UI,
  *    and only the former changed here.
- *  - "Add intention" is disabled (`#cdbfc4` border/ink text) until the
- *    current entry has both a non-empty text AND a chosen area, then
- *    switches to its "ready" look (`#c15178` border/`#a7073e` text) —
- *    both states still render at the Figma export's own `opacity-70`,
- *    which isn't an enabled/disabled signal here, just this button's
- *    constant style. Once 3 are saved, the button is replaced entirely by
- *    an amber note (253:1904), not just disabled.
- *  - "Which area does it support?" is no longer `SpherePicker`'s inline
+ *  - "Save intention" (review fix — was "Add intention") is disabled
+ *    (`#cdbfc4` border/ink text) until the current entry has both a
+ *    non-empty text AND a chosen area, then switches to its "ready" look
+ *    (`#c15178` border/`#a7073e` text) — both states still render at the
+ *    Figma export's own `opacity-70`, which isn't an enabled/disabled
+ *    signal here, just this button's constant style. Once 3 are saved,
+ *    the button is replaced entirely by an amber note (253:1904), not
+ *    just disabled.
+ *  - "Life area" (review fix — was "Which area does it support?") is no longer `SpherePicker`'s inline
  *    chip grid — it's a dropdown trigger (`LifeAreaPickerSheet`) using the
  *    exact same asymmetric-padding/pill-inside-trigger pattern already
  *    built for EveningReflectionFlow's reason picker, right down to the
@@ -98,12 +99,16 @@ function IntentionProgressBar({ step, hasSavedIntention }: { step: 'details' | '
  *    inline here. No step in this whole flow has a back arrow in any
  *    fetched node — `exit` is always `'close'`.
  *
- * The area dropdown trigger is `h-12` (48px) with no vertical padding —
+ * The area dropdown trigger is `h-14` (56px — review fix, was `h-12`/48px,
+ * matching every input field app-wide) with no vertical padding —
  * explicit direct correction, replacing the earlier `py-[13px]`-driven
  * height with a fixed one so its content centers via `items-center`
- * rather than via padding. Its own selected-sphere pill is `h-[40px]`
- * (also explicit direct correction, was 44px) with its own vertical
- * padding dropped for the same reason.
+ * rather than via padding. Its own selected-sphere pill is `h-12` (48px —
+ * review fix, was `h-[40px]`, matching the same "selected pill inside a
+ * dropdown trigger" treatment app-wide) with its own vertical padding
+ * dropped for the same reason. Default-state border is
+ * `border-[#6d6b7c]/60` (review fix, was fully opaque) — the selected
+ * pill's own `#eac3d0` border is a separate, unaffected color.
  */
 export function MorningIntentionFlow() {
   const navigate = useNavigate()
@@ -213,18 +218,18 @@ export function MorningIntentionFlow() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <p className="font-sans text-base font-medium text-ink">Which area does it support?</p>
+              <p className="font-sans text-base font-medium text-ink">Life area</p>
               <button
                 type="button"
                 onClick={() => setAreaSheetOpen(true)}
                 className={cn(
-                  'focus-ring pressable flex h-12 w-full items-center justify-between rounded-pill border border-solid border-[#6d6b7c]',
+                  'focus-ring pressable flex h-14 w-full shrink-0 items-center justify-between rounded-pill border border-solid border-[#6d6b7c]/60',
                   selectedSphere ? 'pr-4 pl-1' : 'px-4',
                 )}
               >
                 {selectedSphere && SelectedSphereIcon ? (
                   <span
-                    className="flex h-[40px] items-center gap-2 rounded-pill border border-solid border-[#eac3d0] bg-[#fae1e9] pr-3.5 pl-2.5"
+                    className="flex h-12 items-center gap-2 rounded-pill border border-solid border-[#eac3d0] bg-[#fae1e9] pr-3.5 pl-2.5"
                     style={{ boxShadow: 'inset 0 -2px 3px rgba(0,0,0,0.05), inset 0 3px 3px rgba(255,255,255,0.4)' }}
                   >
                     <SelectedSphereIcon size={20} weight="fill" className="text-[#6d0e2d]" />
@@ -254,7 +259,7 @@ export function MorningIntentionFlow() {
               )}
             >
               <Plus size={20} />
-              <span className="font-sans text-base font-medium">Add intention</span>
+              <span className="font-sans text-base font-medium">Save intention</span>
             </button>
           )}
 

@@ -140,6 +140,16 @@ function DateBadge({ date, variant }: { date: Date; variant: 'today' | 'history'
  * structure with only the differences the `context` prop's own doc
  * comment describes, not a separate card system.
  *
+ * Review fix: that "EITHER an intention or a mood check-in exists"
+ * contract used to be enforced only by convention (each caller was
+ * supposed to check before rendering this component at all) — EntriesScreen
+ * didn't, so a truly-empty today rendered this card anyway, which put
+ * `rendersTopSlot`'s own "'today' always shows something" rule into play
+ * and surfaced "Not set yet" alone as a stand-in for true emptiness, a
+ * second, disagreeing empty-state treatment from CheckInScreen's correct
+ * one. Now enforced here directly (see the early `return null` below) so
+ * it can't happen regardless of which screen renders this card.
+ *
  * (below: `intention`/`moodCheckIns` doc for the 'today' context —
  * 'history' behaves identically except where `context`'s own doc comment
  * says otherwise.)
@@ -218,8 +228,22 @@ function DateBadge({ date, variant }: { date: Date; variant: 'today' | 'history'
  *    conflict, not a confirmed system.
  */
 export function CompletionSummaryCard({ date, intention, moodCheckIns, context = 'today', onClick }: CompletionSummaryCardProps) {
-  const Root = (onClick ? 'button' : 'div') as ElementType
   const hasMoodCheckIns = moodCheckIns.length > 0
+
+  // True-empty guard (review fix) — this card exists to summarize REAL
+  // content for a day; a day with neither an intention nor a mood
+  // check-in has nothing to summarize. Callers own the true-empty state
+  // themselves (CheckInScreen renders DaySummaryCard's dashed "What's on
+  // your mind today?" card instead — see this component's own doc
+  // comment), but this guard makes that the only possible outcome
+  // regardless of caller: without it, `rendersTopSlot` below still puts
+  // SOMETHING in the top slot for `context === 'today'` even with no real
+  // data, which used to render "Not set yet" alone as a stand-in for true
+  // emptiness — exactly the inconsistency a second caller (EntriesScreen)
+  // that skipped the DaySummaryCard branch entirely used to expose.
+  if (!intention && !hasMoodCheckIns) return null
+
+  const Root = (onClick ? 'button' : 'div') as ElementType
   const EnergyIcon = intention ? ENERGY_LEVEL_ICON[intention.energyLevel] : null
   const visibleMoods = moodCheckIns.slice(0, MAX_VISIBLE_MOODS)
   const overflowCount = Math.max(0, moodCheckIns.length - MAX_VISIBLE_MOODS)
