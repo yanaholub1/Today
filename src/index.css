@@ -502,31 +502,37 @@ body {
     — once the entrance splash reveals the wordmark, a real async wait
     (account creation, sign-in, session restore) can run for an
     indeterminate length of time with nothing else on screen to signal it's
-    still in progress, which previously read as frozen. Review fix: was a
-    continuously-moving 4-beat pulse (three small beats + one larger one,
-    scaling the whole time) — explicit feedback that the ball should stay
-    still most of the time and only bounce periodically, not be in constant
-    motion. Now a static-static-bounce rhythm: the first two-thirds of each
-    cycle is a genuine no-op (both keyframe stops below share the identical
-    resting value, so the ball is pixel-static, not just slow), and the
-    bounce itself — same peak scale/hop/overshoot-cubic-bezier as before,
-    reusing `splash-circle-bounce`'s own hop-and-overshoot feel — is
-    compressed into the final third. Applied via AppWordmark's `pulsing`
-    prop, which only ReturningUserLoadingScreen passes — OnboardingScreen
-    reuses the same component for its own static wordmark and deliberately
-    leaves it unset.
+    still in progress, which previously read as frozen. Rhythm: the first
+    two-thirds of each cycle is a genuine no-op (0% and 66.6% below share
+    the identical resting value, so the ball is pixel-static, not just
+    slow), and a bounce plays only in the final third, then repeats.
+    Review fix: that final-third bounce was originally a scale-based pulse
+    (grow bigger + a small lift) — explicit feedback asked for a REAL
+    bounce matching `splash-circle-bounce` above, not a pulse. Now it's the
+    same motion, literally: only `translateY` moves (no scale at all,
+    mirroring that keyframe's own "never distort the ball's shape" rule),
+    same `ease-in` down / overshoot-`cubic-bezier` spring-back split (just
+    proportionally rescaled from `splash-circle-bounce`'s own 0%→36%→100%
+    onto this segment's own 66.6%→78.6%→100% span), just a smaller drop
+    (4px vs. that keyframe's 12px) since this is a 15px dot, not a giant
+    circle. Applied via AppWordmark's `pulsing` prop, which only
+    ReturningUserLoadingScreen passes — OnboardingScreen reuses the same
+    component for its own static wordmark and deliberately leaves it unset.
   */
   @keyframes wordmark-dot-pulse {
-    0%,
-    66.6% {
-      transform: scale(1) translateY(0);
+    0% {
+      transform: translateY(0);
     }
-    83.3% {
-      transform: scale(1.35) translateY(-3px);
+    66.6% {
+      transform: translateY(0);
+      animation-timing-function: ease-in;
+    }
+    78.6% {
+      transform: translateY(4px);
       animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     100% {
-      transform: scale(1) translateY(0);
+      transform: translateY(0);
     }
   }
   .wordmark-dot-pulse {

@@ -48,7 +48,7 @@ import { ReturningUserLoadingScreen } from './ReturningUserLoadingScreen'
  */
 export function SignInScreen() {
   const navigate = useNavigate()
-  const { signInWithPassword } = useAuth()
+  const { signInWithPassword, beginMinLoadingWindow } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -60,6 +60,7 @@ export function SignInScreen() {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    beginMinLoadingWindow()
     const { error } = await signInWithPassword(email.trim(), password)
     if (error) {
       setSubmitting(false)

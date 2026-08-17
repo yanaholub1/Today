@@ -62,7 +62,7 @@ const MIN_PASSWORD_LENGTH = 6
  */
 export function SignUpScreen() {
   const navigate = useNavigate()
-  const { registerAccount } = useAuth()
+  const { registerAccount, beginMinLoadingWindow } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -78,6 +78,7 @@ export function SignUpScreen() {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    beginMinLoadingWindow()
     const result = await registerAccount(name.trim(), email.trim(), password)
     if (result.error) {
       setSubmitting(false)

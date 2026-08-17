@@ -245,11 +245,21 @@ function RequireOnboarded() {
  * session's `is_anonymous` claim) — only a GENUINE, permanent account
  * redirects away; an anonymous-only session is exactly the state this
  * screen exists to upgrade out of, so it must still render the form.
+ *
+ * Review fix — also checks `!minLoadingWindowActive` (authStore.tsx's own
+ * `beginMinLoadingWindow`/doc comment there has the full mechanism): a fast
+ * registration/sign-in could flip `status` to a real signed-in account
+ * within ~100-200ms, and without this, THIS guard would redirect away that
+ * fast too — unmounting SignUpScreen/SignInScreen's own loading screen
+ * mid entrance-animation, which read as an abrupt jump-cut rather than a
+ * real loading beat. This only ever holds the redirect back, never delays
+ * it past whatever the real request already took.
  */
 function RedirectIfRegistered({ children }: { children: ReactNode }) {
-  const { status, isAnonymous } = useAuth()
+  const { status, isAnonymous, minLoadingWindowActive } = useAuth()
   if (status === 'loading') return <AuthLoadingScreen />
-  return status === 'signedIn' && !isAnonymous ? <Navigate to="/checkin" replace /> : <>{children}</>
+  const isRealAccount = status === 'signedIn' && !isAnonymous
+  return isRealAccount && !minLoadingWindowActive ? <Navigate to="/checkin" replace /> : <>{children}</>
 }
 
 /**

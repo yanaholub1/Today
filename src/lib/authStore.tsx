@@ -70,9 +70,29 @@ interface AuthStoreValue {
   /** Writes the daily intention cutoff to local storage (always, so `deriveIntentionState` sees it immediately regardless of anonymous/real) and, for a real account, best-effort mirrors it to `user_metadata.intention_cutoff_time` too — same dual-write shape as `syncDisplayNameToAccount`, just combined into one call since a native `<input type="time">` doesn't fire per keystroke the way a text field does. */
   updateIntentionCutoffTime: (time: string | null) => void
   signOut: () => Promise<void>
+  /**
+   * True for `MIN_LOADING_SCREEN_MS` after `beginMinLoadingWindow()` is
+   * called, regardless of how fast the real request behind it resolves —
+   * see that function's own doc comment for the full mechanism and why
+   * this lives here rather than in SignUpScreen/SignInScreen themselves.
+   */
+  minLoadingWindowActive: boolean
+  /** Call at the START of a registration/sign-in submission (SignUpScreen/SignInScreen's own `handleSubmit`) — see this function's own doc comment. */
+  beginMinLoadingWindow: () => void
 }
 
 const AuthContext = createContext<AuthStoreValue | null>(null)
+
+/**
+ * Floor for how long `ReturningUserLoadingScreen` stays visible once a
+ * registration/sign-in submission starts (review fix — a fast connection
+ * could resolve in ~100-200ms, which unmounted the loading screen mid
+ * entrance-animation and read as an abrupt jump-cut rather than a real
+ * loading beat). Only ever a FLOOR, never an extension beyond however long
+ * the real work actually takes — see `beginMinLoadingWindow`'s own doc
+ * comment for the mechanism that guarantees that.
+ */
+const MIN_LOADING_SCREEN_MS = 1000
 
 /**
  * Supabase's own `signInWithPassword` message for both a wrong password and
@@ -135,6 +155,33 @@ function friendlyAuthError(message: string): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
+  const [minLoadingWindowActive, setMinLoadingWindowActive] = useState(false)
+
+  /**
+   * Starts (or restarts, on a retry after an error) a `MIN_LOADING_SCREEN_MS`
+   * floor on `minLoadingWindowActive`, which App.tsx's `RedirectIfRegistered`
+   * ALSO consults before navigating away from `/sign-up`/`/sign-in`: it
+   * won't redirect into the app while this is still true, even once the
+   * real account is already signed in, so the loading screen those two
+   * screens are showing can't be unmounted mid-entrance-animation by a
+   * fast response. This can't be done by delaying `registerAccount`'s/
+   * `signInWithPassword`'s OWN returned promise instead (the more obvious-
+   * looking fix) — Supabase's `onAuthStateChange` (this provider's own
+   * subscription, above) fires as a side effect of the SAME underlying
+   * request, independently of when that promise resolves back to the
+   * caller, so `status`/`isAnonymous` (and therefore `RedirectIfRegistered`'s
+   * own redirect) would already have updated before any such delay ran.
+   * A plain `setTimeout` back to `false` — not tracking "is the real
+   * request still pending" — is what keeps this a FLOOR, not an added
+   * delay on top of slow requests: once real work has already taken
+   * longer than `MIN_LOADING_SCREEN_MS`, this flips back to `false` on
+   * its own schedule and `RedirectIfRegistered` redirects the moment
+   * `status` says it's ready, with no extra wait layered on.
+   */
+  const beginMinLoadingWindow = () => {
+    setMinLoadingWindowActive(true)
+    window.setTimeout(() => setMinLoadingWindowActive(false), MIN_LOADING_SCREEN_MS)
+  }
 
   useEffect(() => {
     const syncSession = (newSession: Session | null) => {
@@ -332,6 +379,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         syncDisplayNameToAccount,
         updateIntentionCutoffTime,
         signOut,
+        minLoadingWindowActive,
+        beginMinLoadingWindow,
       }}
     >
       {children}
