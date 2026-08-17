@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import TokenPreview from './TokenPreview'
 import ComponentLibraryPreview from './ComponentLibraryPreview'
 import { TabLayout } from './layouts/TabLayout'
@@ -348,6 +349,7 @@ function App() {
           <Route path="/tokens" element={<TokenPreview />} />
           <Route path="/components" element={<ComponentLibraryPreview />} />
         </Routes>
+        <Analytics />
       </DayLogStoreProvider>
     </AuthProvider>
   )
