@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Circle, CircleHalfTilt, Clock, Heart, PencilSimple, MoonStars, X } from '@phosphor-icons/react'
+import { Circle, Clock, Heart, PencilSimple, X } from '@phosphor-icons/react'
 import { PillSubtabSwitcher } from '../components/PillSubtabSwitcher'
 import { IconTapTarget } from '../components/IconTapTarget'
+import { NotGladIcon } from '../components/NotGladIcon'
+import { MoodEmptyIllustration } from '../components/MoodEmptyIllustration'
+import { IntentionEmptyIllustration } from '../components/IntentionEmptyIllustration'
 import { MoodQuadrantBadge } from '../components/MoodQuadrantBadge'
 import { SPHERES, ENERGY_LEVEL_ICON, ENERGY_LEVEL_COLOR } from '../lib/spheres'
 import type { EnergyLevel } from '../lib/spheres'
@@ -72,7 +75,7 @@ function IntentionDetailCard({ intention }: { intention: IntentionRecord }) {
   const tagPair = intention.tag ? REFLECTION_TAGS.find((t) => t.id === intention.tag) : undefined
   const reason = tagPair ? reflectionTagLabel(tagPair, intention.glad === true) : null
 
-  const OutcomeIcon = intention.glad ? Circle : CircleHalfTilt // review fix — was CircleHalf, see EveningReflectionFlow.tsx's own doc comment (node 363:11766)
+  const OutcomeIcon = intention.glad ? Circle : NotGladIcon // review fix — was CircleHalf, then Phosphor's real CircleHalfTilt (also wrong), see EveningReflectionFlow.tsx's own doc comment (node 367:2465)
   const outcomeLabel = intention.glad ? 'Went well' : 'Not really'
 
   return (
@@ -151,13 +154,14 @@ function IntentionDetailCard({ intention }: { intention: IntentionRecord }) {
  * read-only recap screen and editing a past check-in's note was never
  * asked for.
  */
-function MoodCheckInDetailCard({ checkIn, isLast }: { checkIn: MoodCheckInRecord; isLast: boolean }) {
+function MoodCheckInDetailCard({ checkIn, isFirst, isLast }: { checkIn: MoodCheckInRecord; isFirst: boolean; isLast: boolean }) {
   const [instructionsOpen, setInstructionsOpen] = useState(false)
   const technique = checkIn.technique ? TECHNIQUES.find((t) => t.id === checkIn.technique) : undefined
   const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: false }).format(new Date(checkIn.createdAt))
 
   return (
-    <div className={cn('flex w-full flex-col gap-3 py-4', !isLast && 'border-b border-solid border-[#eddde6]')}>
+    // pt-0 on the first row (review fix, was a uniform py-4): the "Mood check-ins" title's own gap-3 (12px, on the wrapper below) already provides the title-to-first-row gap on its own — this row's own pt-4 used to stack on top of that, making the real gap 28px instead of the intended 12px. Every other row keeps pt-4, and pb-4 is unchanged on all rows (including this one) — only the first row's own TOP padding changes.
+    <div className={cn('flex w-full flex-col gap-3 pb-4', isFirst ? 'pt-0' : 'pt-4', !isLast && 'border-b border-solid border-[#eddde6]')}>
       <div className="flex w-full items-start gap-3 px-1">
         <div className="flex flex-1 items-center gap-2">
           <MoodQuadrantBadge quadrant={checkIn.quadrant} size={20} />
@@ -213,11 +217,30 @@ function MoodCheckInDetailCard({ checkIn, isLast }: { checkIn: MoodCheckInRecord
  * own doc comment for its fields and conditional sections.
  *
  * Header is a bespoke gradient hero (`from-[#fefafd]`/`to-[#fff5fa]`,
- * matching the node's own gradient stops) — NOT `TaskFlowHeader` (that's
- * a flat white bar with the title beside the exit icon; this node's X sits
- * on its own row below the title, next to the pill switcher instead), so
- * this screen owns its own header markup rather than forcing a mismatched
- * shared component.
+ * matching the node's own gradient stops) — NOT `TaskFlowHeader` itself
+ * (that's a flat white bar; this screen's is a gradient, with the pill
+ * switcher living in the separate white panel below it), but the title
+ * row now reuses that component's own layout/spacing exactly: review fix,
+ * the X used to sit on its own row below the title, next to the pill
+ * switcher (matching this node's own original layout) — explicit direct
+ * correction, moved into the title's own row instead (title `flex-1` on
+ * the left, X pushed to the far right, same pattern `TaskFlowHeader`
+ * itself uses) so this screen's exit affordance lines up with every other
+ * flow screen's. Top padding is now `pt-[max(16px,env(safe-area-inset-
+ * top))]` (was a bespoke `pt-[58px]`) — same value `TaskFlowHeader` uses —
+ * so the title/X start at the same vertical position on this screen as on
+ * "Set today's intention"/"Mood check-in".
+ *
+ * Review fix: this block's own bottom padding (was `pb-[51px]`) and the
+ * white panel's `-mt-5` overlap below it are both gone — those two values
+ * only ever existed to cancel each other out visually (the panel's own
+ * `z-[1]` painted over whatever padding the negative margin didn't
+ * cover), leaving a real 31px gap of visible gradient between the title
+ * row and the white panel with no way to control it directly. Bottom
+ * padding is now `pb-3` (12px, review fix again — briefly 0, now this
+ * explicit direct request) — a real, visible 12px strip of gradient
+ * between the title row and the white panel's own flat top edge, not
+ * cancelled by any negative margin on the panel below.
  */
 export function DayDetailScreen() {
   const navigate = useNavigate()
@@ -241,16 +264,16 @@ export function DayDetailScreen() {
   return (
     <div className="flex min-h-full flex-col bg-white">
       <div
-        className="flex w-full flex-col px-5 pt-[58px] pb-[51px]"
+        className="flex w-full items-center gap-3 px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3"
         style={{ background: 'linear-gradient(180deg, #fefafd 16.34%, #fff5fa 90.024%)', boxShadow: '0px 4px 5px rgba(247,189,221,0.18)' }}
       >
-        <h1 className="font-serif text-xl tracking-[-0.2px] text-ink">{title}</h1>
+        <h1 className="flex-1 font-serif text-xl tracking-[-0.2px] text-ink">{title}</h1>
+        <IconTapTarget icon={X} aria-label="Close" onClick={() => navigate(-1)} />
       </div>
 
-      <div className="relative z-[1] -mt-5 flex flex-1 flex-col items-start rounded-t-[20px] border-t border-solid border-[#fdebe2] bg-white">
-        <div className="flex w-full items-center justify-between px-5 pt-4">
+      <div className="relative z-[1] flex flex-1 flex-col items-start rounded-t-[20px] border-t border-solid border-[#fdebe2] bg-white">
+        <div className="flex w-full items-center px-5 pt-4">
           <PillSubtabSwitcher items={SUBTABS} activeId={subtab} onChange={setSubtab} />
-          <IconTapTarget icon={X} aria-label="Close" onClick={() => navigate(-1)} />
         </div>
 
         {subtab === 'intention' ? (
@@ -282,7 +305,17 @@ export function DayDetailScreen() {
                   ))}
                 </div>
               ) : (
-                <p className="font-sans text-sm text-ink/50">No intentions set.</p>
+                // Review fix: was a single plain text line ("No intentions
+                // set.") — now the same icon+title+subtitle empty-state
+                // recipe the Mood subtab's own empty state already uses
+                // (DaySummaryCard's shape, scaled down for an in-tab
+                // section), for a consistent empty state across both
+                // subtabs. Explicit direct request, `IntentionEmptyState.png`.
+                <div className="flex w-full flex-col items-center gap-2 py-10 text-center">
+                  <IntentionEmptyIllustration className="size-10 object-contain" />
+                  <p className="font-sans text-base font-medium text-ink">No intentions set</p>
+                  <p className="font-sans text-sm text-ink/60">Nothing logged for this day.</p>
+                </div>
               )}
             </div>
           </>
@@ -292,7 +325,7 @@ export function DayDetailScreen() {
             {state.moodCheckIns.length > 0 ? (
               <div className="flex w-full flex-col items-start">
                 {state.moodCheckIns.map((checkIn, index) => (
-                  <MoodCheckInDetailCard key={checkIn.id} checkIn={checkIn} isLast={index === state.moodCheckIns.length - 1} />
+                  <MoodCheckInDetailCard key={checkIn.id} checkIn={checkIn} isFirst={index === 0} isLast={index === state.moodCheckIns.length - 1} />
                 ))}
               </div>
             ) : (
@@ -300,8 +333,12 @@ export function DayDetailScreen() {
               // icon + title + subtitle) scaled down for an in-tab section
               // rather than a full dashed-border card — no node shows this
               // state for THIS view, so it's inferred, not Figma-verified.
+              // Review fix: icon is now the real exported `MoodEmptyState.png`
+              // (was a plain Phosphor `MoonStars` glyph) — explicit direct
+              // request, same real-artwork treatment `NotesEmptyIllustration`/
+              // `PracticesEmptyIllustration` already use elsewhere.
               <div className="flex w-full flex-col items-center gap-2 py-10 text-center">
-                <MoonStars size={40} weight="fill" className="text-summary-badge-bg" />
+                <MoodEmptyIllustration className="size-10 object-contain" />
                 <p className="font-sans text-base font-medium text-ink">No mood check-ins yet</p>
                 <p className="font-sans text-sm text-ink/60">Nothing logged for this day.</p>
               </div>

@@ -25,9 +25,14 @@ export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
  * Review fix — default-state border is now `border-[#6d6b7c]/60` (was
  * fully opaque), explicit direct request applied consistently to every
  * input-styled field's own default stroke (this field, the Life
- * area/reason-picker dropdown triggers, the emotion search field) — the
- * focus state is unaffected, since `.focus-ring-field` (index.css) is a
- * separate `outline`, not a `border-color` change.
+ * area/reason-picker dropdown triggers, the emotion search field).
+ * Review fix: this field's border DOES now flip to brand pink on focus,
+ * via `.focus-ring-field-shape` (index.css) — this input owns both its
+ * own visible border and the focus itself, so that class's `:focus-
+ * visible` branch applies directly here (see its own doc comment for why
+ * NotesField/MoodFlowScreen's search fields need the OTHER branch,
+ * `:has(:focus-visible)`, instead — their border lives on a separate
+ * wrapper `<div>` around the actual input).
  *
  * `shrink-0` — confirmed necessary, not just defensive: switching this
  * field (and the other fixed-height inputs above) from padding-driven to
@@ -42,7 +47,10 @@ export function TextInput({ className, ...rest }: TextInputProps) {
   return (
     <input
       type="text"
-      className={cn('focus-ring-field h-14 w-full shrink-0 rounded-pill border border-solid border-[#6d6b7c]/60 bg-white px-4 font-sans text-base text-ink placeholder:text-ink/70', className)}
+      className={cn(
+        'focus-ring-field focus-ring-field-shape h-14 w-full shrink-0 rounded-pill border border-solid border-[#6d6b7c]/60 bg-white px-4 font-sans text-base text-ink placeholder:text-ink/70',
+        className,
+      )}
       {...rest}
     />
   )

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CaretDown, Circle, CircleHalfTilt } from '@phosphor-icons/react'
+import { CaretDown, Circle } from '@phosphor-icons/react'
 import { TaskFlowHeader } from '../../components/TaskFlowHeader'
 import { GradientActionButton } from '../../components/GradientActionButton'
+import { NotGladIcon } from '../../components/NotGladIcon'
 import { NotesField } from '../../components/NotesField'
 import { ReasonPickerSheet } from '../../components/ReasonPickerSheet'
 import { FlowSuccessScreen } from '../../components/FlowSuccessScreen'
@@ -48,13 +49,16 @@ const PROGRESS_UNFILLED = 'rgba(244,38,110,0.2)'
  * `FeelBetterSheet`'s own Yes/"Not really" pill recipe otherwise exactly —
  * a real style change from the earlier `ChoiceChip` card-shaped pair. Its
  * icon is Phosphor's `Circle` for "Yes" (`weight="fill"`, a solid disc)
- * and `CircleHalfTilt` for "Not really" (`weight="fill"` — review fix,
+ * and `NotGladIcon` for "Not really" (`weight="fill"` — review fix,
  * verified against node 363:11766, was `CircleHalf`'s plain half-filled
- * disc; same swap applied everywhere else this "Not really"/`glad ===
- * false` glyph appears — DayDetailScreen's own outcome row and
- * PatternsScreen.tsx's "How it went" card — each keeping its own existing
- * size, this fix only swaps the glyph), and both share the same 2-color
- * pair regardless of
+ * disc, THEN Phosphor's real `CircleHalfTilt`, also wrong — re-verified
+ * against node 367:2465, whose own path is a circle-plus-diagonal-plus-3-
+ * ascending-bars glyph, not a half-fill at all, despite that node's own
+ * stale "CircleHalfTilt" layer name; same swap applied everywhere else
+ * this "Not really"/`glad === false` glyph appears — DayDetailScreen's own
+ * outcome row and PatternsScreen.tsx's "How it went" card — each keeping
+ * its own existing size, this fix only swaps the glyph), and both share
+ * the same 2-color pair regardless of
  * which option — unselected `#353d4f`, selected `#6d0e2d` (the latter
  * already an established app color, reused verbatim). The surrounding
  * pill's own colors/shadow (`THUMB_UNSELECTED`/`THUMB_SELECTED`/
@@ -195,7 +199,7 @@ export function EveningReflectionFlow() {
             className="focus-ring pressable flex h-[48px] flex-1 items-center justify-center gap-2 rounded-pill border border-solid pr-3.5 pl-3"
             style={{ ...(draft.glad === false ? THUMB_SELECTED : THUMB_UNSELECTED), boxShadow: THUMB_SHADOW }}
           >
-            <CircleHalfTilt size={20} weight="fill" style={{ color: draft.glad === false ? '#6d0e2d' : '#353d4f' }} />
+            <NotGladIcon size={20} weight="fill" style={{ color: draft.glad === false ? '#6d0e2d' : '#353d4f' }} />
             <span className="font-sans text-base font-medium" style={{ color: draft.glad === false ? '#6d0e2d' : '#2f374a' }}>
               Not really
             </span>

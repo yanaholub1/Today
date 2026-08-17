@@ -93,13 +93,14 @@ export function NotesField({ value, onChange, className }: NotesFieldProps) {
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <p className="font-sans text-base font-medium text-ink">Notes</p>
-      <div className="relative flex min-h-[96px] w-full rounded-[20px] border border-solid border-[#eddde6] py-3 pl-3 pr-8">
+      <div className="focus-ring-field-shape relative flex min-h-[96px] w-full rounded-[20px] border border-solid border-[#eddde6] py-3 pl-3 pr-8">
+        {/* No rounded-[20px] here (review fix, was matching the wrapper's own radius) — a border-radius on the textarea ITSELF clips its own text box at the corners, cutting off the first character(s) of the first line. The wrapper above still owns the field's real 20px-radius visible shape; `.focus-ring-field-shape`'s own glow/border-color already reads off the wrapper, not this element, so removing this radius doesn't affect the focus treatment. */}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Add your thoughts"
           rows={3}
-          className="focus-ring-field w-full flex-1 resize-none rounded-[20px] bg-transparent font-sans text-base font-medium text-ink placeholder:text-[#787d89]"
+          className="focus-ring-field w-full flex-1 resize-none bg-transparent font-sans text-base font-medium text-ink placeholder:text-[#787d89]"
         />
         {Ctor && (
           <button

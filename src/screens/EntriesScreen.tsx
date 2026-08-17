@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { CompletionSummaryCard } from '../components/CompletionSummaryCard'
 import type { DayLog, IntentionLog } from '../components/CompletionSummaryCard'
 import { DaySummaryCard } from '../components/DaySummaryCard'
+import { PracticesEmptyIllustration } from '../components/PracticesEmptyIllustration'
+import { PracticeCard } from '../components/PracticeCard'
 import { HomeHeader } from '../components/HomeHeader'
 import { SecondaryNav } from '../components/SecondaryNav'
 import type { SecondaryNavSection } from '../components/SecondaryNav'
@@ -15,6 +17,7 @@ import type { DayBundle } from '../lib/dayLogHistory'
 import { getGreeting } from '../lib/greeting'
 import { getDisplayName } from '../lib/displayName'
 import { QUADRANT_TO_MOOD_CATEGORY } from '../lib/moodCategories'
+import { TECHNIQUES } from '../lib/moodTechniques'
 import { cn } from '../lib/cn'
 import type { DayDetailNavState } from './DayDetailScreen'
 
@@ -54,10 +57,20 @@ function toPastLog(bundle: DayBundle): PastLog {
  * (same components CheckInScreen already uses), so this screen's own
  * shell now mirrors CheckInScreen's: full-bleed `HomeHeader`, then an
  * inset `px-5` wrapper holding `SecondaryNav` (`mt-5`) before "Today"
- * (also `mt-5`, matching CheckInScreen's rhythm). The switcher doesn't
- * change which content renders below it — same as CheckInScreen, neither
- * fetched node shows what "Practices" actually contains, so it stays a
- * visual-only toggle for now.
+ * (also `mt-5`, matching CheckInScreen's rhythm).
+ *
+ * Review fix: the switcher now actually switches — it used to be
+ * visual-only (this doc comment's own earlier note), which meant picking
+ * "Practices" here left the "Notes"-flavored Today/history content on
+ * screen underneath a highlighted-but-inert pill, not a real empty state
+ * or a real practices list. `favoriteTechniqueIds` isn't a per-day/
+ * historical concept (schema-wise it's just `user_id` + `technique_id`,
+ * no date), so unlike "Notes" — Today's card plus a chronological
+ * month-by-month history below it — "Practices" here is the same flat,
+ * non-chronological list CheckInScreen's own Practices branch already
+ * renders: reused verbatim (`favoriteTechniques` derivation, `PracticeCard`
+ * list, `DaySummaryCard` + `PracticesEmptyIllustration` empty state), not
+ * reimplemented.
  *
  * Layout values (title size, gaps) are the task's own spec, not pulled
  * from Figma — none of the 3 fetched nodes (128:679/697/715) show more
@@ -83,7 +96,7 @@ function toPastLog(bundle: DayBundle): PastLog {
 export function EntriesScreen() {
   const navigate = useNavigate()
   const [section, setSection] = useState<SecondaryNavSection>('notes')
-  const { dayLog, intentions, moodCheckIns } = useDayLogStore()
+  const { dayLog, intentions, moodCheckIns, favoriteTechniqueIds, toggleFavoriteTechnique } = useDayLogStore()
   const { userId } = useAuth()
   const [pastLogs, setPastLogs] = useState<PastLog[]>([])
 
@@ -132,6 +145,12 @@ export function EntriesScreen() {
   // different sizes.
   const isCompleteEmpty = !hasDayContent && pastLogs.length === 0
 
+  // Same derivation as CheckInScreen's own Practices branch — see this
+  // screen's own doc comment for why "Practices" reuses that flat,
+  // non-chronological list wholesale instead of getting its own
+  // Today/history structure.
+  const favoriteTechniques = favoriteTechniqueIds.map((id) => TECHNIQUES.find((t) => t.id === id)).filter((t): t is (typeof TECHNIQUES)[number] => t !== undefined)
+
   const openTodayDetail = () => {
     const detailState: DayDetailNavState = {
       date: TODAY.toISOString(),
@@ -162,29 +181,57 @@ export function EntriesScreen() {
         {/* self-start — the switcher should hug its own content width, not stretch to the row's full width the way a flex-column child does by default. */}
         <SecondaryNav activeSection={section} onSectionChange={setSection} className="mt-5 self-start" />
 
-        {/* text-lg (18px), not text-xl (20px) — explicit direct correction, applies to every section title on this screen (Today + month headers). */}
-        <h1 className="mt-5 font-serif text-lg text-ink">Today</h1>
-        <div className={cn('mt-3', isCompleteEmpty && 'flex flex-1 flex-col')}>
-          {hasDayContent ? (
-            <CompletionSummaryCard {...todayLog} context="today" onClick={openTodayDetail} />
-          ) : isCompleteEmpty ? (
-            // Same flex-1/mb-[77px] FAB-clearance mechanism as CheckInScreen's
-            // own complete-empty card — see this screen's own `isCompleteEmpty`
-            // doc comment above.
-            <DaySummaryCard className="mb-[77px] flex-1" />
-          ) : (
-            <DaySummaryCard className="h-[166px]" />
-          )}
-        </div>
-
-        {monthSection && (
+        {section === 'notes' ? (
           <>
-            {/* mt-3 (12px) — explicit direct correction, was mt-6 (24px, an inferred value borrowing CheckInScreen's own section-to-section rhythm since no spec existed at the time). Now matches the title-to-card gap immediately below it, so every title-adjacent gap on this screen is a uniform 12px. */}
-            <h2 className="mt-3 font-serif text-lg text-ink">{monthSection.label}</h2>
-            <div className="mt-3 flex flex-col gap-2">
-              {monthSection.days.map((log) => (
-                <CompletionSummaryCard key={log.date.toISOString()} {...log} context="history" onClick={() => openHistoryDetail(log as PastLog)} />
-              ))}
+            {/* text-lg (18px), not text-xl (20px) — explicit direct correction, applies to every section title on this screen (Today + month headers). */}
+            <h1 className="mt-5 font-serif text-lg text-ink">Today</h1>
+            <div className={cn('mt-3', isCompleteEmpty && 'flex flex-1 flex-col')}>
+              {hasDayContent ? (
+                <CompletionSummaryCard {...todayLog} context="today" onClick={openTodayDetail} />
+              ) : isCompleteEmpty ? (
+                // Same flex-1/mb-[77px] FAB-clearance mechanism as CheckInScreen's
+                // own complete-empty card — see this screen's own `isCompleteEmpty`
+                // doc comment above.
+                <DaySummaryCard className="mb-[77px] flex-1" />
+              ) : (
+                <DaySummaryCard className="h-[166px]" />
+              )}
+            </div>
+
+            {monthSection && (
+              <>
+                {/* mt-3 (12px) — explicit direct correction, was mt-6 (24px, an inferred value borrowing CheckInScreen's own section-to-section rhythm since no spec existed at the time). Now matches the title-to-card gap immediately below it, so every title-adjacent gap on this screen is a uniform 12px. */}
+                <h2 className="mt-3 font-serif text-lg text-ink">{monthSection.label}</h2>
+                <div className="mt-3 flex flex-col gap-2">
+                  {monthSection.days.map((log) => (
+                    <CompletionSummaryCard key={log.date.toISOString()} {...log} context="history" onClick={() => openHistoryDetail(log as PastLog)} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          // Practices — same flat, non-chronological favorited-techniques list
+          // CheckInScreen's own Practices branch renders, reused as-is (see
+          // this screen's own doc comment for why there's no history
+          // structure here the way "Notes" has one).
+          <>
+            <h1 className="mt-5 font-serif text-lg text-ink">Practices</h1>
+            <div className={cn('mt-3', favoriteTechniques.length === 0 && 'flex flex-1 flex-col')}>
+              {favoriteTechniques.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {favoriteTechniques.map((technique) => (
+                    <PracticeCard key={technique.id} technique={technique} onUnfavorite={() => toggleFavoriteTechnique(technique.id)} />
+                  ))}
+                </div>
+              ) : (
+                <DaySummaryCard
+                  icon={<PracticesEmptyIllustration className="size-[44px] object-contain" />}
+                  title="No favorite practices yet"
+                  subtitle="Favorite a technique from a mood check-in to save it here."
+                  className="mb-[77px] flex-1"
+                />
+              )}
             </div>
           </>
         )}

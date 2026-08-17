@@ -227,15 +227,15 @@ export function MoodFlowScreen() {
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pt-4 [scrollbar-gutter:stable]">
             {emotionSearchOpen ? (
               <>
-                {/* h-14 (56px), no vertical padding — review fix, was pt-[14px]/pb-[13px] driven, matching every other input field's own fixed-height/zero-padding treatment. border-[#6d6b7c]/60 — review fix, default-state stroke opacity reduced app-wide (same value at both this search field's own instances below). */}
-                <div className="flex h-14 w-full shrink-0 items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c]/60 bg-white px-4">
+                {/* h-14 (56px), no vertical padding — review fix, was pt-[14px]/pb-[13px] driven, matching every other input field's own fixed-height/zero-padding treatment. border-[#6d6b7c]/60 — review fix, default-state stroke opacity reduced app-wide (same value at both this search field's own instances below). rounded-pill (400px) — review fix, was rounded-[8px]; explicit direct request to match every other input field's own pill radius (TextInput, the Life area dropdown trigger), same value at both instances below, in all states (not just resting). */}
+                <div className="focus-ring-field-shape flex h-14 w-full shrink-0 items-center gap-2 rounded-pill border border-solid border-[#6d6b7c]/60 bg-white px-4">
                   <MagnifyingGlass size={24} className="shrink-0 text-ink/70" />
                   <input
                     type="text"
                     value={emotionSearchQuery}
                     onChange={(e) => setEmotionSearchQuery(e.target.value)}
                     placeholder="Search a feeling"
-                    className="focus-ring-field w-full rounded-[8px] bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
+                    className="focus-ring-field w-full rounded-pill bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
                     autoFocus
                   />
                 </div>
@@ -294,14 +294,14 @@ export function MoodFlowScreen() {
                 <p className="font-sans text-base font-medium text-ink/60">Or</p>
                 <div className="h-px flex-1 bg-ink/15" />
               </div>
-              <div className="flex h-14 w-full shrink-0 items-center gap-2 rounded-[8px] border border-solid border-[#6d6b7c]/60 bg-white px-4">
+              <div className="focus-ring-field-shape flex h-14 w-full shrink-0 items-center gap-2 rounded-pill border border-solid border-[#6d6b7c]/60 bg-white px-4">
                 <MagnifyingGlass size={24} className="shrink-0 text-ink/70" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search a feeling"
-                  className="focus-ring-field w-full rounded-[8px] bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
+                  className="focus-ring-field w-full rounded-pill bg-transparent font-sans text-base text-ink placeholder:text-ink/70"
                 />
               </div>
               {trimmedQuery && (

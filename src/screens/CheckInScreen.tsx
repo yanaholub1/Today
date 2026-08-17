@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart } from '@phosphor-icons/react'
 import { CompletionSummaryCard } from '../components/CompletionSummaryCard'
 import type { DayLog } from '../components/CompletionSummaryCard'
 import type { DayDetailNavState } from './DayDetailScreen'
 import { DaySummaryCard } from '../components/DaySummaryCard'
+import { PracticesEmptyIllustration } from '../components/PracticesEmptyIllustration'
 import { PracticeCard } from '../components/PracticeCard'
 import { HomeHeader } from '../components/HomeHeader'
 import { SecondaryNav } from '../components/SecondaryNav'
@@ -217,7 +217,7 @@ export function CheckInScreen() {
               </div>
             ) : (
               <DaySummaryCard
-                icon={Heart}
+                icon={<PracticesEmptyIllustration className="size-[44px] object-contain" />}
                 title="No favorite practices yet"
                 subtitle="Favorite a technique from a mood check-in to save it here."
                 className="mb-[77px] flex-1"

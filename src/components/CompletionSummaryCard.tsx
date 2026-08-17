@@ -120,7 +120,8 @@ function DateBadge({ date, variant }: { date: Date; variant: 'today' | 'history'
       >
         <p className={cn('font-sans text-[14px] font-semibold tracking-[-0.14px] uppercase', isToday ? 'text-white' : 'text-[#6c717f]')}>{month}</p>
       </div>
-      <p className="font-sans text-[20px] leading-none font-semibold tracking-[-0.2px] text-[var(--color-calendar-day-number)] uppercase">{day}</p>
+      {/* text-[18px] — review fix, was text-[20px] (that value's own Figma verification note is above); explicit direct request, applies to both variants since they share this one element. */}
+      <p className="font-sans text-[18px] leading-none font-semibold tracking-[-0.2px] text-[var(--color-calendar-day-number)] uppercase">{day}</p>
       <p className="font-sans text-[12px] leading-none font-medium tracking-[-0.12px] uppercase text-[var(--color-calendar-weekday)]">{weekday}</p>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Circle, CircleHalfTilt } from '@phosphor-icons/react'
+import { Circle } from '@phosphor-icons/react'
+import { NotGladIcon } from '../components/NotGladIcon'
 import { PillSubtabSwitcher } from '../components/PillSubtabSwitcher'
 import { TimeRangePicker } from '../components/TimeRangePicker'
 import { RankedBarRow } from '../components/RankedBarRow'
@@ -58,7 +59,7 @@ const MAX_OUTCOME_DOTS = 13
 type PatternsSubtab = 'intention' | 'mood'
 
 const SUBTABS: { id: PatternsSubtab; label: string }[] = [
-  { id: 'intention', label: 'Intention' },
+  { id: 'intention', label: 'Intentions' },
   { id: 'mood', label: 'Mood' },
 ]
 
@@ -417,7 +418,7 @@ export function PatternsScreen() {
                                 {glad ? (
                                   <Circle size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                                 ) : (
-                                  <CircleHalfTilt size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
+                                  <NotGladIcon size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                                 )}
                               </span>
                             ))}
@@ -441,7 +442,7 @@ export function PatternsScreen() {
                     <div className="flex items-center gap-1.5">
                       <span className="font-sans text-sm font-medium tracking-[-0.14px] text-ink/60">Not really</span>
                       <span className="flex size-4 shrink-0 items-center justify-center">
-                        <CircleHalfTilt size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
+                        <NotGladIcon size={13} weight="fill" color={OUTCOME_CIRCLE_COLOR} />
                       </span>
                     </div>
                   </div>

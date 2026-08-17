@@ -38,7 +38,7 @@
   --color-slider-to: #fbdbed;
   --color-slider-border: #ffd6ed;
   --color-focus-ring: #2f374a;
-  --color-focus-ring-field: #f83b7d;
+  /* --color-focus-ring-field removed (review fix): was byte-identical to --color-warm (#f83b7d) — .focus-ring-field below now reuses --color-warm directly instead of keeping a duplicate token. */
 
   /*
     IntensitySlider inactive/active states (Stage 2.1/2.2 fixes) — verified
@@ -325,13 +325,58 @@ body {
     outline-color: var(--color-focus-ring);
   }
 
-  /* Same mechanics as .focus-ring, scoped to actual text-entry fields (TextInput, NotesField's textarea) — explicit direct request for a distinct accent color there, not app-wide. */
+  /*
+    Review fix: was an `outline` swap identical in mechanics to `.focus-ring`
+    above — flagged because a flat 2px solid outline sitting right at the
+    field's own edge read as a heavier, more saturated border, visually
+    indistinguishable from what an error/invalid state should look like.
+    Now just caret-color — the visible focus treatment itself (border
+    color + halo glow) moved to `.focus-ring-field-shape` below. The flat
+    saturated border look is reserved for a future error/invalid state,
+    not reused here — the two need to stay visually distinct.
+  */
   .focus-ring-field {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+    caret-color: var(--color-warm);
+    outline: none;
   }
-  .focus-ring-field:focus-visible {
-    outline-color: var(--color-focus-ring-field);
+
+  /*
+    Border-color + halo-glow focus treatment for a text field's own
+    visible shape. Split out from `.focus-ring-field` (review fix #2)
+    because the element that owns a field's visible border isn't always
+    the element that receives focus: TextInput's `<input>` is both (the
+    border lives right on it), but NotesField's `<textarea>` and
+    MoodFlowScreen's search `<input>`s are each recessed inside a
+    SEPARATE bordered wrapper `<div>`, inset from it by that wrapper's
+    own padding (12-32px for NotesField, 16px + icon width for the search
+    fields). Putting glow+border-color on the recessed inner element (the
+    first pass's bug) meant the glow never reached past the wrapper's own
+    border — it read as smudged onto the edge rather than a halo outside
+    the shape; putting `.focus-ring-field` itself on BOTH the shape and
+    the inner element would double the glow and let the inner element's
+    own halo bleed out from underneath sibling icons (paint order).
+
+    One selector handles both structures: `:focus-visible` for when this
+    class sits on the actual focus target itself (TextInput), `:has(:focus-
+    visible)` for when it sits on a wrapper around the real target
+    (NotesField, MoodFlowScreen) — not `:focus-within`, which doesn't
+    distinguish real keyboard focus from a mouse/touch tap. Apply this
+    class to whichever element owns the field's own `border`/background;
+    `.focus-ring-field` (caret-color) stays on the actual `<input>`/
+    `<textarea>` regardless of which element that is.
+
+    Blur 16px + spread 4px (review fix #2, was 8px/3px) so the glow is
+    unambiguously detached from the border rather than hugging it.
+  */
+  .focus-ring-field-shape {
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+  .focus-ring-field-shape:focus-visible,
+  .focus-ring-field-shape:has(:focus-visible) {
+    border-color: var(--color-warm);
+    box-shadow: 0 0 16px 4px rgba(248, 59, 125, 0.35);
   }
 
   /*

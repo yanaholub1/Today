@@ -254,12 +254,14 @@ export function MorningIntentionFlow() {
               disabled={!canAddMore}
               onClick={handleAddIntention}
               className={cn(
-                'focus-ring pressable flex h-12 w-full items-center justify-center gap-2 rounded-[8px] border border-solid px-4 py-2 opacity-70',
+                // h-[58px] — review fix, was h-12 (48px); matches this same screen's own "Continue" button (GradientActionButton, height driven by its py-3.5 padding rather than a fixed class) — explicit direct request, height only, no other change.
+                'focus-ring pressable flex h-[58px] w-full items-center justify-center gap-2 rounded-[8px] border border-solid px-4 py-2 opacity-70',
                 canAddMore ? 'border-[#c15178] bg-[#fefafc] text-[#a7073e]' : 'border-[#cdbfc4] text-[#17171c]',
               )}
             >
               <Plus size={20} />
-              <span className="font-sans text-base font-medium">Save intention</span>
+              {/* text-lg (18px) — review fix, was text-base (16px); matches the primary button's own text size (GradientActionButton's "Continue"), explicit direct request, size+weight only — font-medium already matched. */}
+              <span className="font-sans text-lg font-medium">Save intention</span>
             </button>
           )}
 
