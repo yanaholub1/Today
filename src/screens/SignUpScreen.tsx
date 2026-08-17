@@ -89,7 +89,7 @@ export function SignUpScreen() {
   if (submitting) return <ReturningUserLoadingScreen onDone={() => {}} />
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
+    <div className="mx-auto flex h-dvh w-full sm:max-w-[393px] flex-col bg-white">
       <TaskFlowHeader exit="back" onExit={() => navigate('/onboarding')} />
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col px-5 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-2">

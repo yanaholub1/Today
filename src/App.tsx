@@ -86,7 +86,7 @@ function AuthLoadingScreen() {
   const [showCircle] = useState(() => pink || peekFirstLoadSplashAvailable())
   useThemeColor(pink && '#ffdcf5')
   return (
-    <div className="relative mx-auto h-dvh w-full max-w-[393px]" style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}>
+    <div className="relative mx-auto h-dvh w-full sm:max-w-[393px]" style={{ background: pink ? 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' : 'white' }}>
       {showCircle && (
         // `fixed`, not `absolute` — on a viewport wider than this app's own
         // 393px column (e.g. desktop, testing in a browser window), an

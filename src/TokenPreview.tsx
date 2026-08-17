@@ -2,7 +2,7 @@
 // Proves colors, radii, and the sheen shadow utility render as expected.
 export default function TokenPreview() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[393px] flex-col gap-6 bg-white p-5">
+    <div className="mx-auto flex min-h-screen w-full sm:max-w-[393px] flex-col gap-6 bg-white p-5">
       <div className="sheen sheen-warm flex h-40 items-center justify-center rounded-hero border-2 border-warm-border bg-warm">
         <p className="font-serif text-2xl tracking-[-0.28px] text-white">
           Set intention

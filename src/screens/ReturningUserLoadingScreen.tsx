@@ -103,7 +103,7 @@ export function ReturningUserLoadingScreen({ onDone }: ReturningUserLoadingScree
 
   return (
     <div
-      className="relative mx-auto flex h-dvh w-full max-w-[393px] items-center justify-center overflow-hidden"
+      className="relative mx-auto flex h-dvh w-full sm:max-w-[393px] items-center justify-center overflow-hidden"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
       <AppWordmark dotRef={dotRef} visible={wordmarkVisible} pulsing />

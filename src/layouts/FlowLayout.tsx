@@ -19,7 +19,7 @@ import { Outlet } from 'react-router-dom'
  */
 export function FlowLayout() {
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
+    <div className="mx-auto flex h-dvh w-full sm:max-w-[393px] flex-col bg-white">
       <Outlet />
     </div>
   )

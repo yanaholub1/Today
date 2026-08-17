@@ -43,7 +43,7 @@ export default function ComponentLibraryPreview() {
   const [fiveSegmentValue, setFiveSegmentValue] = useState(50)
 
   return (
-    <div className="mx-auto flex w-full max-w-[393px] flex-col gap-8 bg-white p-5 pb-16">
+    <div className="mx-auto flex w-full sm:max-w-[393px] flex-col gap-8 bg-white p-5 pb-16">
       <h1 className="font-serif text-2xl text-ink">Today — component library</h1>
 
       <Section title="HeroActionCard — standalone">

@@ -19,7 +19,7 @@ import { BottomNav } from '../components/BottomNav'
  */
 export function TabLayout() {
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
+    <div className="mx-auto flex h-dvh w-full sm:max-w-[393px] flex-col bg-white">
       <div className="flex-1 overflow-y-auto">
         <Outlet />
       </div>

@@ -41,7 +41,7 @@ export function FeelBetterSheet({ open, onAnswer, onDismiss }: FeelBetterSheetPr
         aria-modal="true"
         aria-label="Do you feel better?"
         className={cn(
-          'absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-[393px] flex-col items-center gap-5 rounded-t-[24px] bg-white px-5 pt-3 pb-10 transition-transform duration-200',
+          'absolute inset-x-0 bottom-0 mx-auto flex w-full sm:max-w-[393px] flex-col items-center gap-5 rounded-t-[24px] bg-white px-5 pt-3 pb-10 transition-transform duration-200',
           open ? 'translate-y-0' : 'translate-y-full',
         )}
       >

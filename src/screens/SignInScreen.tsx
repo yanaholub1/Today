@@ -71,7 +71,7 @@ export function SignInScreen() {
   if (submitting) return <ReturningUserLoadingScreen onDone={() => {}} />
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[393px] flex-col bg-white">
+    <div className="mx-auto flex h-dvh w-full sm:max-w-[393px] flex-col bg-white">
       <TaskFlowHeader exit="back" onExit={() => navigate('/onboarding')} />
       {/*
         `pb-[max(32px,env(safe-area-inset-bottom))]` + `h-dvh` (not

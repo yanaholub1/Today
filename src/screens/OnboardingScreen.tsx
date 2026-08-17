@@ -256,7 +256,7 @@ export function OnboardingScreen() {
   // in step, never below what the notch actually needs.)
   return (
     <div
-      className="relative mx-auto flex h-dvh w-full max-w-[393px] flex-col overflow-hidden px-5 pt-[clamp(max(2rem,calc(env(safe-area-inset-top)+0.5rem)),32dvh_-_192px,max(4rem,calc(env(safe-area-inset-top)+1rem)))] pb-[max(24px,env(safe-area-inset-bottom))]"
+      className="relative mx-auto flex h-dvh w-full sm:max-w-[393px] flex-col overflow-hidden px-5 pt-[clamp(max(2rem,calc(env(safe-area-inset-top)+0.5rem)),32dvh_-_192px,max(4rem,calc(env(safe-area-inset-top)+1rem)))] pb-[max(24px,env(safe-area-inset-bottom))]"
       style={{ background: 'linear-gradient(225deg, #ffdcf5 0%, #fff5fb 100%)' }}
     >
       {/*

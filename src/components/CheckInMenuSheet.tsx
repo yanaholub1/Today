@@ -78,7 +78,7 @@ export function CheckInMenuSheet({ open, onClose }: CheckInMenuSheetProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Check in"
-        className={`absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-[393px] flex-col gap-2 rounded-t-[24px] border border-solid border-black/10 bg-white px-5 pt-8 pb-10 shadow-[0px_-3px_24px_0px_rgba(0,0,0,0.12)] transition-transform duration-200 ${open ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`absolute inset-x-0 bottom-0 mx-auto flex w-full sm:max-w-[393px] flex-col gap-2 rounded-t-[24px] border border-solid border-black/10 bg-white px-5 pt-8 pb-10 shadow-[0px_-3px_24px_0px_rgba(0,0,0,0.12)] transition-transform duration-200 ${open ? 'translate-y-0' : 'translate-y-full'}`}
       >
         <div className="flex flex-col gap-1.5">
           <GradientActionButton
